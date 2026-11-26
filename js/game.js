@@ -999,26 +999,28 @@ function travel() {
 }
 
 /* ---------------- 역사 노트 · 로그 · 메뉴 ---------------- */
-function openRecs(sel, campId) {
+function openRecs(sel, campId, still) {
   const el = $('recs'); const cid = campId || S.camp;
   const st = cid === S.camp ? S : loadSave(cid); const recs = st ? st.recs : [];
   const camp = CAMPS[cid];
   const id = sel || recs[recs.length - 1] || null;
-  el.innerHTML = `<div class="recs-panel" role="dialog" aria-label="역사 노트"><header class="map-head"><div><p class="eyebrow">J · 역사 노트 (수집한 교역 기록)</p><h2>${escH(camp.title)} · 되살린 기록 ${recs.length} / ${camp.recs.length}</h2></div>
-    <nav class="recs-tabs">${CAMP_ORDER.map(c => `<button class="rtab ${c === cid ? 'on' : ''}" data-c="${c}">${CAMPS[c].tag}</button>`).join('')}</nav>
-    <button class="x" id="recsX">닫기 <span class="kbd">Esc</span></button></header>
+  const after = !!G.recsAfter;
+  el.innerHTML = `<div class="recs-panel ${still ? 'still' : ''}" role="dialog" aria-label="역사 노트"><header class="map-head"><div><p class="eyebrow">역사 노트</p><h2>${escH(camp.title)} · 기록 ${recs.length} / ${camp.recs.length}</h2></div>
+    ${after ? '' : `<nav class="recs-tabs">${CAMP_ORDER.map(c => `<button class="rtab ${c === cid ? 'on' : ''}" data-c="${c}">${CAMPS[c].tag}</button>`).join('')}</nav>`}
+    <button class="x ${after ? 'gold' : ''}" id="recsX">${after ? '다음' : '닫기'}</button></header>
     <div class="recs-body"><div class="recs-grid">${camp.recs.map(r => {
       const got = recs.includes(r);
       return `<button class="rec-slot ${got ? 'got' : ''} ${r === id ? 'sel' : ''}" data-r="${r}" ${got ? '' : 'disabled'}><span class="rs-seal">${got ? REC[r].seal : '？'}</span><span class="rs-t">${got ? escH(REC[r].t) : '아직 지워진 기록'}</span><span class="rs-c">${escH(REC[r].ch)}</span></button>`;
     }).join('')}</div>
-    <div class="recs-detail">${id ? recCardHTML(id, true) : '<p class="empty">아직 복원한 기록이 없다. 사람들과 이야기하며 역사를 알아 가자!</p>'}
-    <p class="fiction">※ 게임 속 상인·관리·군인 등 인물과 미션은 이야기를 위해 만든 창작입니다. 기록 카드의 ‘역사 노트’는 실제 역사적 사실입니다.</p></div></div></div>`;
-  el.hidden = false; G.overlay = 'recs'; SND.play('open'); hidePrompt();
+    <div class="recs-detail" id="recsDetail">${id ? recCardHTML(id, true) : '<p class="empty">아직 복원한 기록이 없다.</p>'}</div></div></div>`;
+  el.hidden = false; G.overlay = 'recs'; if (!still) SND.play('open'); hidePrompt();
   $('recsX').onclick = closeOv;
-  el.querySelectorAll('.rec-slot.got').forEach(b => b.onclick = () => openRecs(b.dataset.r, cid));
-  el.querySelectorAll('.rtab').forEach(b => b.onclick = () => openRecs(null, b.dataset.c));
-}
-function openLog() {
+  el.querySelectorAll('.rec-slot.got').forEach(b => b.onclick = () => {
+    el.querySelectorAll('.rec-slot').forEach(x => x.classList.toggle('sel', x === b));
+    $('recsDetail').innerHTML = recCardHTML(b.dataset.r, true); SND.play('tick');
+  });
+  el.querySelectorAll('.rtab').forEach(b => b.onclick = () => openRecs(null, b.dataset.c, true));
+}function openLog() {
   const el = $('logov');
   el.innerHTML = `<div class="log-panel" role="dialog" aria-label="대화 기록"><header class="map-head"><div><p class="eyebrow">L · 대화 기록</p><h2>지나간 대화</h2></div><button class="x" id="logX">닫기 <span class="kbd">Esc</span></button></header>
     <div class="log-body" id="logBody">${G.log.length ? G.log.map(l => `<p>${l.n ? `<b>${escH(l.n)}</b>` : '<i>·</i>'}${escH(l.t)}</p>`).join('') : '<p class="empty">아직 나눈 대화가 없다.</p>'}</div></div>`;
@@ -1027,40 +1029,38 @@ function openLog() {
 }
 function openMenu() {
   const el = $('menu');
-  el.innerHTML = `<div class="menu-panel" role="dialog" aria-label="메뉴"><p class="eyebrow">메뉴 · ${escH(C().tag)} ${escH(C().title)}</p><h2>잠시 쉬어 가기</h2>
-    <div class="menu-btns"><button class="btn" data-a="resume">계속하기 <span class="kbd">Esc</span></button>
-    <button class="btn" data-a="set">설정</button><button class="btn" data-a="log">대화 기록 <span class="kbd">L</span></button>
-    <button class="btn" data-a="help">조작 방법</button><button class="btn" data-a="camps">챕터 선택</button><button class="btn" data-a="title">저장하고 타이틀로</button>
-    <button class="btn danger" data-a="quit">게임 종료</button></div>
-    <p class="menu-note">진행 상황은 자동으로 저장됩니다. · 플레이 시간 ${fmtTime(S.play)} · 현재 점수 ${scoreOf(S)}점</p></div>`;
+  el.innerHTML = `<div class="menu-panel menu2" role="dialog" aria-label="메뉴"><h2>메뉴</h2>
+    <div class="menu-grid"><button class="btn gold wide" data-a="resume">계속하기</button>
+    <button class="btn" data-a="note">역사 노트</button><button class="btn" data-a="log">대화 기록</button>
+    <button class="btn" data-a="set">설정</button><button class="btn" data-a="help">조작 방법</button>
+    <button class="btn" data-a="camps">챕터 선택</button><button class="btn" data-a="title">타이틀로</button></div>
+    <p class="menu-note">자동 저장됨 · ${fmtTime(S.play)} · ${scoreOf(S)}점</p></div>`;
   el.hidden = false; G.overlay = 'menu'; hidePrompt();
   el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
     const a = b.dataset.a;
     if (a === 'resume') closeOv();
+    if (a === 'note') { closeOv(); openRecs(); }
     if (a === 'set') { closeOv(); openSettings(); }
     if (a === 'log') { closeOv(); openLog(); }
     if (a === 'help') { closeOv(); showHelp(); }
     if (a === 'camps') { save(); closeOv(); toTitle(); openCamps(); }
-    if (a === 'title') { save(); closeOv(); toTitle('진행 상황을 저장했습니다.'); }
-    if (a === 'quit') { save(); closeOv(); showQuit(); }
+    if (a === 'title') { save(); closeOv(); toTitle(); }
   });
 }
 function showHelp() {
   const el = $('menu');
-  el.innerHTML = `<div class="menu-panel" role="dialog" aria-label="조작 방법"><p class="eyebrow">조작 방법</p><h2>이렇게 움직여요</h2>
-    <dl class="help"><dt><span class="kbd">← → ↑ ↓</span> / <span class="kbd">W A S D</span></dt><dd>이동 · 같은 방향키를 <b>두 번 빠르게</b> 누르면 달리기 (Shift도 가능)</dd>
-    <dt><span class="kbd">Z</span></dt><dd>붓 휘두르기 — 먹물 그림자 공격</dd>
-    <dt><span class="kbd">Space</span> <span class="kbd">Enter</span> <span class="kbd">E</span></dt><dd>대화 · 조사 · 대사 넘기기</dd>
-    <dt>대화 중 <span class="kbd">←</span> <span class="kbd">→</span></dt><dd>이전 대사 다시 보기 · 다음 대사로</dd>
-    <dt>마우스 클릭</dt><dd>바닥을 누르면 이동, 사람·물건을 누르면 다가가서 대화</dd>
-    <dt><span class="kbd">1</span>~<span class="kbd">4</span></dt><dd>선택지 · 퀴즈 보기 고르기</dd>
-    <dt><span class="kbd">M</span> · <span class="kbd">J</span> · <span class="kbd">L</span> · <span class="kbd">Esc</span></dt><dd>지도 · 역사 노트 · 대화 기록 · 메뉴 (대화 중에도 가능)</dd>
-    <dt>머리 위 표시</dt><dd><b class="mk y">!</b> 중요한 이야기 · <b class="mk g">?</b> 살펴볼 것 · <b class="kwdemo">빨간 글씨</b> 중요한 낱말</dd></dl>
-    <div class="menu-btns"><button class="btn gold" id="helpX">알겠어요</button></div></div>`;
+  el.innerHTML = `<div class="menu-panel" role="dialog" aria-label="조작 방법"><h2>조작 방법</h2>
+    <dl class="help"><dt><span class="kbd">← → ↑ ↓</span></dt><dd>이동 · 두 번 빠르게 누르면 달리기</dd>
+    <dt><span class="kbd">Z</span></dt><dd>공격</dd>
+    <dt><span class="kbd">X</span></dt><dd>스킬</dd>
+    <dt><span class="kbd">Q</span> · <span class="kbd">C</span></dt><dd>무기 바꾸기 · 약초 탕약 마시기</dd>
+    <dt><span class="kbd">Space</span></dt><dd>대화 · 조사 · 대사 넘기기</dd>
+    <dt><span class="kbd">Esc</span></dt><dd>메뉴 · 대화 중에는 대화 끝내기</dd>
+    <dt><span class="kbd">M</span> · <span class="kbd">J</span></dt><dd>지도 · 역사 노트</dd></dl>
+    <div class="menu-btns"><button class="btn gold" id="helpX">확인</button></div></div>`;
   el.hidden = false; G.overlay = 'menu';
   $('helpX').onclick = closeOv;
-}
-function closeOv() { ['recs', 'logov', 'menu'].forEach(id => { $(id).hidden = true; $(id).innerHTML = ''; }); G.overlay = null; if (G.mode === 'play') updateHud(); }
+}function closeOv() { ['recs', 'logov', 'menu'].forEach(id => { $(id).hidden = true; $(id).innerHTML = ''; }); G.overlay = null; if (G.mode === 'play') updateHud(); const af = G.recsAfter; G.recsAfter = null; af && af(); }
 function overlayKey(e) {
   const o = G.overlay;
   if (o === 'chap') { if (['Enter', 'Space', 'Escape'].includes(e.code)) G.chapClose && G.chapClose(); return; }
@@ -1095,7 +1095,8 @@ function campDone() {
   const allDone = CAMP_ORDER.every(c => prog[c] && prog[c].done);
   if (allDone) { const avg = Math.round(CAMP_ORDER.reduce((a, c) => a + prog[c].score, 0) / 3); prog.final = { score: avg, rank: rankOf(avg) }; }
   saveProg(prog);
-  showResult(score, rank, prog, allDone);
+  // 챕터가 끝나면 먼저 이번 편의 역사 노트를 보여 주고, 노트를 닫으면 클리어 창
+  G.recsAfter = () => showResult(score, rank, prog, allDone); openRecs(null, S.camp);
 }
 function rankSeal(r, big, useImg) {
   const u = useImg && UIART.rank[r]; // 랭크 도장 그림은 챕터 선택창에서만
@@ -1283,8 +1284,9 @@ function cutTitle(im) {
 /* 로딩 : 그림과 글꼴을 모두 불러오면 자동으로 타이틀 화면으로 넘어간다 */
 function preload() {
   G.mode = 'loading';
-  const srcs = Object.values(IMGS).concat('img/title.webp');
-  const total = srcs.length + 1; let done = 0;
+  // 게임에 쓰는 그림을 모두 미리 불러온다 (장면 그림 · 타이틀 · 배경 · 결과창 · 챕터 · 랭크)
+  const srcs = [...new Set(Object.values(IMGS).map(v => typeof v === 'string' ? v : v && v.src).filter(Boolean).concat('img/title.webp', 'img/bg_scene.webp', 'img/ui_result.webp', 'img/ui_ranks.webp', 'img/ui_cards.webp'))];
+  const total = srcs.length + 2; let done = 0;
   const step = () => { done++; const p = Math.round(done / total * 100); $('loadFill').style.width = p + '%'; $('loadMsg').textContent = `불러오는 중… ${p}%`; };
   const imgs = srcs.map(src => new Promise(res => {
     const im = new Image();
@@ -1292,7 +1294,8 @@ function preload() {
     im.onerror = () => { step(); res(); }; im.src = src;
   }));
   const fonts = (document.fonts && document.fonts.load ? Promise.race([document.fonts.load('400 20px "Song Myung"').then(() => document.fonts.ready), new Promise(r => setTimeout(r, 4000))]) : Promise.resolve()).then(step);
-  Promise.all([...imgs, fonts]).then(() => setTimeout(() => {
+  const ui = UIART.load.then(step); // 결과창 · 랭크 조각 자르기까지 끝낸다
+  Promise.all([...imgs, fonts, ui]).then(() => setTimeout(() => {
     $('loading').classList.add('out');
     setTimeout(() => { $('loading').hidden = true; toTitle(); }, 450);
   }, 250));
@@ -1300,7 +1303,10 @@ function preload() {
 
 /* ---------------- 설정 · 코드 입력 · 자동 넘기기 ---------------- */
 const AUTO_KEY = 'cheonha-auto-unlock';
-function autoUnlocked() { try { return localStorage.getItem(AUTO_KEY) === '1'; } catch (e) { return false; } }
+// 코드는 저장하지 않는다 : 새로 열면 항상 코드를 넣지 않은 상태로 시작
+try { localStorage.removeItem(AUTO_KEY); } catch (e) { }
+let CODE_OK = false;
+function autoUnlocked() { return CODE_OK; }
 /* 코드로 열리는 두 버튼 : 자동 넘기기(1) · 매우 빠르게(2) */
 const AUTO_SHOW = 'cheonha-auto-show', CTRL_KEY = 'cheonha-ctrl';
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } };
@@ -1344,7 +1350,7 @@ function openSettings() {
   $('setX').onclick = closeOv;
   const go = () => {
     const v = ($('codeIn').value || '').trim().toLowerCase();
-    if (v === 'eastbusan') { lsSet(AUTO_KEY, '1'); lsSet(AUTO_SHOW, '1'); SND.play('win'); syncAutoBtn(); openSettings(); $('codeMsg').textContent = '자동 넘기기 버튼이 생겼어요.'; }
+    if (v === 'eastbusan') { CODE_OK = true; lsSet(AUTO_SHOW, '1'); SND.play('win'); syncAutoBtn(); openSettings(); $('codeMsg').textContent = '자동 넘기기 버튼이 생겼어요.'; }
     else { $('codeMsg').textContent = '알 수 없는 코드예요.'; SND.play('bad'); }
   };
   $('codeGo').onclick = go;

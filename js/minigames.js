@@ -211,7 +211,7 @@ const MG = (() => {
       const el = document.createElement('button'); el.className = 'cat-item ' + (good ? 'g' : 'b') + ' ' + (it.cls || '');
       el.innerHTML = `<b>${esc(it.t)}</b>${it.s ? `<small>${esc(it.s)}</small>` : ''}`;
       const fromL = Math.random() < 0.5, y = 8 + Math.random() * 70;
-      const o = { el, x: fromL ? -18 : 108, y, vx: (fromL ? 1 : -1) * (14 + Math.random() * 10), ph: Math.random() * 6, good, it };
+      const o = { el, x: fromL ? -18 : 108, y, vx: (fromL ? 1 : -1) * (14 + Math.random() * 10) * (d.speed || 1), ph: Math.random() * 6, good, it };
       el.style.left = o.x + '%'; el.style.top = o.y + '%'; F.appendChild(el); st.items.push(o);
       el.onclick = () => {
         if (st.done || o.gone) return;

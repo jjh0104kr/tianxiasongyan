@@ -285,10 +285,10 @@ REC.yr6.facts.splice(4, 0, '원나라도 주요 항구에 시박사를 두어 �
 
 /* ---- 단순해진 미니게임 ---- */
 Object.assign(MGDATA, {
-  playbill: { type: 'catch', unique: true, title: '날아간 공연 목록 잡기', tag: '미션 · 사라진 공연 기록', need: 4, every: 0.8, goodRate: 0.65,
-    desc: '바람에 날아간 공연 목록 종이 네 장을 <b>클릭해서</b> 붙잡자! 먹물 방울은 건드리지 말 것.',
+  playbill: { type: 'catch', unique: true, title: '날아간 공연 목록 잡기', tag: '미션 · 사라진 공연 기록', need: 4, every: 0.6, goodRate: 0.45, speed: 1.45,
+    desc: '바람에 날아간 공연 목록 종이 네 장을 <b>클릭해서</b> 붙잡자! 먹물 방울과 다른 종이는 건드리지 말 것.',
     good: [{ t: '그림자 인형극', s: '첫 번째', cls: 'sheet' }, { t: '삼국 이야기', s: '두 번째', cls: 'sheet' }, { t: '잡극(연극)', s: '세 번째', cls: 'sheet' }, { t: '소매 춤', s: '마지막', cls: 'sheet' }],
-    bad: [{ t: '먹물', cls: 'blot', why: '앗, 먹물이야! 종이만 잡자.' }], badMsg: '먹물은 피하자!',
+    bad: [{ t: '먹물', cls: 'blot', why: '앗, 먹물이야! 종이만 잡자.' }, { t: '빈 종이', s: '글씨 없음', cls: 'sheet', why: '아무것도 안 적힌 빈 종이야!' }, { t: '찻집 영수증', s: '차 두 잔', cls: 'sheet', why: '그건 찻집 영수증이야!' }], badMsg: '공연 목록만 잡자!',
     win: '공연 목록을 모두 되찾았다! 인형극 → 이야기 → 잡극 → 춤, 오늘의 와자 무대 완성!' },
   y_ulus: { type: 'jigsaw', title: '몽골 제국 지도 맞추기', tag: '미션 · 제국의 지도 완성하기',
     desc: '먹물 그림자에게서 되찾은 지도 조각 네 개! 조각을 <b>누르기만 하면</b> 제자리로 날아가 붙는다.',
@@ -304,11 +304,11 @@ Object.assign(MGDATA, {
       { t: '한인', s: '옛 금나라 땅(화북)의 사람들', look: 'hanli', side: 'r', ok: '한인은 차별을 받았어.' },
       { t: '남인', s: '옛 남송 사람들 · 가장 많음', look: 'namin', side: 'r', ok: '남인은 수는 가장 많았지만 가장 심한 차별을 받았어.' }],
     wrong: '왕 서리의 말을 떠올려 봐. 높은 자리는 누가 차지했지?', win: '원나라의 사회 구조 완성! 지배층은 몽골인·색목인, 피지배층은 한인·남인.' },
-  y_pay: { type: 'catch', title: '흩날리는 교초 줍기', tag: '미션 · 시장 거래', need: 5, every: 0.7, goodRate: 0.55,
+  y_pay: { type: 'catch', title: '흩날리는 교초 줍기', tag: '미션 · 시장 거래', need: 6, every: 0.55, goodRate: 0.45, speed: 1.5,
     desc: '시장에 바람이 불어 돈이 흩날린다! 원나라 지폐 <b>교초</b>만 클릭해서 주워 담자.',
     good: [{ t: '교초', s: '원나라 지폐', cls: 'bill yuan', ok: '교초 하나 주웠다!' }],
     bad: [{ t: '교자', s: '송나라 지폐', cls: 'bill song', why: '그건 송나라 때 쓰던 교자야! 지금은 원나라.' }, { t: '먹물', cls: 'blot', why: '앗, 먹물 그림자의 먹물이야!' }],
-    badMsg: '교초만 주워!', win: '교초 다섯 장을 모았다! 이걸로 면포와 쟁기 날을 살 수 있어.' },
+    badMsg: '교초만 주워!', win: '교초 여섯 장을 모았다! 이걸로 면포와 쟁기 날을 살 수 있어.' },
   y_routes: { type: 'routes', title: '세 갈래 길 잇기', tag: '미션 · 교역로 연결하기',
     desc: '버튼을 <b>하나씩 누르면</b> 길이 지도 위에 그려진다. 세 길을 모두 이어 보자!',
     lines: [
