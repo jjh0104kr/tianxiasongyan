@@ -1165,7 +1165,7 @@ function drawThumb(cvs) {
   ART.begin(ctx);
 }
 /* 챕터 선택 : 배경 그림 위에 챕터 카드 세 장. 앞 편을 클리어해야 다음 편이 열린다 */
-const campOpen = (c, prog = loadProg()) => { const i = CAMP_ORDER.indexOf(c); return i === 0 || !!(prog[CAMP_ORDER[i - 1]] && prog[CAMP_ORDER[i - 1]].done); };
+const campOpen = (c, prog = loadProg()) => { const i = CAMP_ORDER.indexOf(c); return i === 0 || !!prog.unlockAll || !!(prog[CAMP_ORDER[i - 1]] && prog[CAMP_ORDER[i - 1]].done); };
 function openCamps() {
   const el = $('camps'), prog = loadProg(); G.overlay = 'modal';
   const card = (c, i) => {
@@ -1226,7 +1226,7 @@ function askName(cb) {
   $('nameBack').onclick = () => { el.hidden = true; G.overlay = null; };
 }
 /* 게임 시작 · 처음부터 : 저장된 모든 데이터(세 편의 진행, 랭크, 돈 · 무기 · 스킬)를 지우고 새로 시작 */
-function hasAnyData() { const p = loadProg(); return CAMP_ORDER.some(c => loadSave(c)) || !!p.name || !!p.rpg; }
+function hasAnyData() { const p = loadProg(); return CAMP_ORDER.some(c => loadSave(c)) || !!p.name || !!p.rpg || !!p.unlockAll; }
 function wipeAll() {
   try { CAMP_ORDER.forEach(c => localStorage.removeItem(SKEY(c))); localStorage.removeItem(PKEY); } catch (e) { }
   if (window.resetRPG) window.resetRPG();
@@ -1351,6 +1351,8 @@ function openSettings() {
   const go = () => {
     const v = ($('codeIn').value || '').trim().toLowerCase();
     if (v === 'eastbusan') { CODE_OK = true; lsSet(AUTO_SHOW, '1'); SND.play('win'); syncAutoBtn(); openSettings(); $('codeMsg').textContent = '자동 넘기기 버튼이 생겼어요.'; }
+    // 모든 챕터 열기 : 진행 기록에 남겨 두고, 타이틀의 '게임 시작'(전체 초기화)을 누르면 사라진다
+    else if (v === 'eastbusan1') { const pr = loadProg(); pr.unlockAll = 1; saveProg(pr); SND.play('win'); $('codeMsg').textContent = '모든 챕터가 열렸어요.'; $('btnCont').disabled = false; $('contInfo').textContent = ''; }
     else { $('codeMsg').textContent = '알 수 없는 코드예요.'; SND.play('bad'); }
   };
   $('codeGo').onclick = go;
