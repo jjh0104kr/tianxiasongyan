@@ -74,6 +74,6 @@
       const sk = pad.querySelector('.tb-sk'), R = window.RPG;
       sk.classList.toggle('off', !(R && R.skills && R.skills[R.wpn]));
     } else if (jid == null && on) { /* 조작창이 숨으면 이동 멈춤 */ }
-    rot.hidden = !(on && innerHeight > innerWidth * 1.05);
+    rot.hidden = true; // 세로 화면에서도 그대로 플레이
   }, 120);
 })();

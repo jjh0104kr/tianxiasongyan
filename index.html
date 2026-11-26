@@ -1,6 +1,8 @@
 <title>천하상단: 사라진 교역 지도</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="중학교 2학년 역사 교육용 웹 RPG — 송나라 편 · 원나라 편 · 총복습">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/favicon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Song+Myung&display=swap">
@@ -17,10 +19,11 @@
         <div class="hud-where"><b id="hudPlace"></b><span id="hudEra"></span></div>
       </div>
       <div class="hud-right">
-        <button class="hud-btn" id="hudRecBtn" title="역사 노트 (J)"><span class="hud-label">역사 노트</span><b id="hudRec">0 / 9</b><span class="kbd">J</span></button>
-        <button class="hud-btn" id="hudMap" title="지도 (M)">지도 <span class="kbd">M</span></button>
+        <button class="hud-btn" id="hudRecBtn" title="역사 노트"><span class="hud-label">역사 노트</span><b id="hudRec">0 / 9</b></button>
+        <button class="hud-btn" id="hudMap" title="지도">지도</button>
         <button class="hud-btn" id="hudSet" title="설정">설정</button>
-        <button class="hud-btn" id="hudMenu" title="메뉴 (Esc)">메뉴 <span class="kbd">Esc</span></button>
+        <button class="hud-btn" id="hudMenu" title="메뉴">메뉴</button>
+        <button class="hud-btn fs-btn" id="hudFs" title="전체 화면" aria-label="전체 화면">⛶</button>
       </div>
     </header>
     <div id="goal" hidden><span class="goal-tag">목표</span><span id="goalText"></span></div>
@@ -69,6 +72,7 @@
     <!-- 타이틀 -->
     <section id="loading" class="ov loading" aria-live="polite">
       <div class="load-inner">
+        <div class="load-spin" aria-hidden="true"><i></i></div>
         <p class="load-name">천하상단</p>
         <div class="load-bar"><i id="loadFill"></i></div>
         <p class="load-msg" id="loadMsg">불러오는 중… 0%</p>
@@ -84,7 +88,7 @@
           <button class="t-btn" id="btnCred" aria-label="제작자"><img id="tBtn3" alt="제작자"></button>
         </nav>
         <p class="title-rank" id="titleRank"></p>
-        <div class="t-links"><button class="t-quit" id="btnSet">⚙ 설정</button><button class="t-quit" id="btnQuit">게임 종료</button></div>
+        <div class="t-links"><button class="t-quit fs-btn" id="btnFs">⛶ 전체 화면</button><button class="t-quit" id="btnSet">⚙ 설정</button><button class="t-quit" id="btnQuit">게임 종료</button></div>
       </div>
     </section>
     <div id="camps" class="ov modal" hidden></div>

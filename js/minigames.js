@@ -231,6 +231,43 @@ const MG = (() => {
     raf = requestAnimationFrame(loop);
   }
 
+  /* 초성 빈칸 : 직접 써 넣기. 틀리면 −5점과 함께 초성 → 첫 글자 → 정답 순서로 알려 준다 */
+  function chosung(d) {
+    const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+    const cho = s => [...s].map(ch => { const c = ch.charCodeAt(0) - 0xac00; return c >= 0 && c < 11172 ? CHO[Math.floor(c / 588)] : ch; }).join('');
+    const first = s => s.split(' ').map(w => w[0] + '○'.repeat(w.length - 1)).join(' ');
+    const norm = s => String(s).replace(/\s+/g, '');
+    frame(d, `<div class="chs"><p class="chs-n" id="chsN"></p><p class="chs-q" id="chsQ"></p><p class="chs-hint" id="chsH"></p>
+      <div class="chs-in"><input id="chsIn" autocomplete="off" spellcheck="false" placeholder="정답을 써 넣으세요"><button class="btn gold" id="chsGo">확인</button></div></div>`);
+    let i = 0, miss = 0;
+    const inp = document.getElementById('chsIn');
+    const show = () => {
+      const q = d.qs[i]; miss = 0;
+      document.getElementById('chsN').textContent = `${i + 1} / ${d.qs.length}`;
+      document.getElementById('chsQ').innerHTML = esc(q.q).replace('［？］', '<span class="chs-blank">　？　</span>');
+      document.getElementById('chsH').textContent = ''; inp.value = ''; inp.disabled = false; setTimeout(() => inp.focus(), 30);
+    };
+    const next = () => { i++; if (i >= d.qs.length) { inp.disabled = true; document.getElementById('chsGo').disabled = true; finish(d.win); } else show(); };
+    const check = () => {
+      if (st.done || inp.disabled) return;
+      const q = d.qs[i], v = inp.value; if (!v.trim()) return;
+      if (norm(v) === norm(q.a)) {
+        SND.play('good'); document.querySelector('.chs-blank').textContent = q.a; document.querySelector('.chs-blank').classList.add('ok');
+        msg('정답!', 'ok'); inp.disabled = true; setTimeout(next, 900); return;
+      }
+      miss++; if (typeof penalize === 'function') penalize(5); shake(inp);
+      const h = document.getElementById('chsH');
+      if (miss === 1) { h.textContent = `초성 힌트 : ${cho(q.a)}`; msg('아니야. 초성을 보고 다시 써 보자. (−5점)', 'bad'); }
+      else if (miss === 2) { h.textContent = `첫 글자 힌트 : ${first(q.a)}`; msg('아니야. 첫 글자를 보고 다시! (−5점)', 'bad'); }
+      else { document.querySelector('.chs-blank').textContent = q.a; h.textContent = `정답은 「${q.a}」`; msg('정답을 알려 줄게. 다음 문제로! (−5점)', 'bad'); inp.disabled = true; setTimeout(next, 1600); }
+      inp.value = '';
+    };
+    document.getElementById('chsGo').onclick = check;
+    inp.addEventListener('keydown', e => { e.stopPropagation(); if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.isComposing) check(); });
+    st = { done: false, key(e) { if (st.done && e.code === 'Enter') close(); } };
+    msg(d.start || '빈칸에 들어갈 말을 써 넣자.'); show();
+  }
+
   /* 지도 클릭 : 지도 위 점 가운데 알맞은 곳 누르기 */
   function mapclick(d) {
     const pts = d.spots.map(p => ({ ...p, X: YMAP.px(p.lon), Y: YMAP.py(p.lat) }));
@@ -313,7 +350,7 @@ const MG = (() => {
   }
 
   return {
-    start(id, done) { cb = done; const d = MGDATA[id]; ({ timing, sort, blanks, order, match, needle, pick, jigsaw, swipe, catch: catchGame, mapclick, travel, routes })[d.type](d); },
+    start(id, done) { cb = done; const d = MGDATA[id]; ({ timing, sort, blanks, order, match, needle, pick, jigsaw, swipe, catch: catchGame, mapclick, travel, routes, chosung })[d.type](d); },
     key(e) { if (st && st.key) st.key(e); },
     get active() { return active; },
   };

@@ -5,14 +5,15 @@
 (() => {
   /* ---------------- 공용 저장 ---------------- */
   const R = Object.assign({ money: 0, potions: 0, wpn: 'brush', owned: { brush: 1 }, skills: {} }, loadProg().rpg || {});
+  R.skills = Object.assign({ brush: 1 }, R.skills); // 묵향 회오리는 처음부터 가진 붓 스킬
   const saveR = () => { const p = loadProg(); p.rpg = R; saveProg(p); };
   window.RPG = R;
-  window.resetRPG = () => { for (const k of Object.keys(R)) delete R[k]; Object.assign(R, { money: 0, potions: 0, wpn: 'brush', owned: { brush: 1 }, skills: {} }); G.skCd = {}; syncHud(true); };
+  window.resetRPG = () => { for (const k of Object.keys(R)) delete R[k]; Object.assign(R, { money: 0, potions: 0, wpn: 'brush', owned: { brush: 1 }, skills: { brush: 1 } }); G.skCd = {}; syncHud(true); };
 
   const WPN = {
     brush: { n: '붓', range: 30, dmg: 1, cd: 0.32, sk: { id: 'brush', n: '묵향 회오리', cd: 6, d: '붓을 크게 휘둘러 주위의 먹물 그림자를 모두 밀쳐 낸다 (주변 전체 공격)' } },
     bow: { n: '활', range: 170, dmg: 0.5, cd: 0.4, sk: { id: 'bow', n: '화살비', cd: 7, d: '앞쪽으로 화살 다섯 대를 부채꼴로 한꺼번에 쏜다' } },
-    sword: { n: '검', range: 30, dmg: 2, cd: 0.34, sk: { id: 'sword', n: '질풍 베기', cd: 7, d: '앞으로 순식간에 돌진하며 길 위의 적을 모두 벤다 (돌진 중 무적)' } },
+    sword: { n: '검', range: 25, dmg: 2, cd: 0.34, sk: { id: 'sword', n: '질풍 베기', cd: 7, d: '앞으로 순식간에 돌진하며 길 위의 적을 모두 벤다 (돌진 중 무적)' } },
     spear: { n: '창', range: 44, dmg: 1, cd: 0.34, sk: { id: 'spear', n: '용 찌르기', cd: 6, d: '창을 길게 내질러 일직선 위의 적을 모두 꿰뚫는다' } },
   };
   const ORDER = ['brush', 'bow', 'sword', 'spear'];
@@ -34,10 +35,10 @@
      ban 반말 · hao 하오체 · hage 하게체 · hae 해요체 */
   const jong = w => { const c = String(w).trim().slice(-1).charCodeAt(0); return c >= 0xac00 && c <= 0xd7a3 ? (c - 0xac00) % 28 > 0 : /[0-9]$/.test(w) ? !/[2459]$/.test(w) : false; };
   const TONE = {
-    ban: { ok: '맞았어!', retry: '땡! 다시 골라 봐.', ans: a => `정답은 ${a}${jong(a) ? '이' : ''}야.`, three: n => `문제는 세 개야. 다 맞히면 **${n}**!`, fail: '틀렸어! 공부하고 다시 와.', win: n => `세 문제 다 맞혔네! 약속대로 「${n}」 알려 줄게.` },
-    hao: { ok: '옳소!', retry: '아니오. 다시 골라 보시오.', ans: a => `정답은 ${a}${jong(a) ? '이' : ''}라오.`, three: n => `문제는 세 개요. 모두 맞히면 **${n}**!`, fail: '틀렸소! 공부하고 다시 도전하시오.', win: n => `세 문제 모두 맞혔구려! 약속대로 「${n}」를 알려 드리리다.` },
-    hage: { ok: '옳거니!', retry: '아닐세. 다시 골라 보게.', ans: a => `정답은 ${a}일세.`, three: n => `문제는 세 개일세. 모두 맞히면 **${n}**!`, fail: '틀렸네! 공부하고 다시 오게.', win: n => `세 문제를 모두 맞혔구먼! 약속대로 「${n}」를 알려 주지.` },
-    hae: { ok: '맞아요!', retry: '아니에요. 다시 골라 보세요.', ans: a => `정답은 ${a}${jong(a) ? '이에요' : '예요'}.`, three: n => `문제는 세 개예요. 다 맞히면 **${n}**!`, fail: '틀렸어요! 공부하고 다시 오세요.', win: n => `세 문제 다 맞혔네요! 약속대로 「${n}」 알려 드릴게요.` },
+    ban: { ok: '맞았어!', retry: '땡! 다시 골라 봐.', ans: a => `정답은 ${a}${jong(a) ? '이' : ''}야.`, three: (n, w) => `문제 세 개를 다 맞히면 X 키로 쓰는 ${w} 스킬 「${n}」를 알려 줄게. ${w}은 상점에서 살 수 있어.`, known: n => `어? 너 벌써 「${n}」를 알잖아! 그래도 세 문제 다 맞히면 용돈 줄게.`, paid: '세 문제 다 맞혔네! 약속대로 용돈 줄게.', fail: '틀렸어! 공부하고 다시 와.', win: n => `세 문제 다 맞혔네! 약속대로 「${n}」 알려 줄게.` },
+    hao: { ok: '옳소!', retry: '아니오. 다시 골라 보시오.', ans: a => `정답은 ${a}${jong(a) ? '이' : ''}라오.`, three: (n, w) => `문제 세 개를 모두 맞히면 X 키로 쓰는 ${w} 스킬 「${n}」를 알려 드리리다. ${w}은 상점에서 살 수 있소.`, known: n => `허허, 이미 「${n}」를 아는구려. 그래도 세 문제를 맞히면 여비를 드리리다.`, paid: '세 문제 모두 맞혔구려! 약속대로 여비를 드리리다.', fail: '틀렸소! 공부하고 다시 도전하시오.', win: n => `세 문제 모두 맞혔구려! 약속대로 「${n}」를 알려 드리리다.` },
+    hage: { ok: '옳거니!', retry: '아닐세. 다시 골라 보게.', ans: a => `정답은 ${a}일세.`, three: (n, w) => `문제 세 개를 모두 맞히면 X 키로 쓰는 ${w} 스킬 「${n}」를 알려 주지. ${w}은 상점에서 살 수 있네.`, known: n => `허허, 벌써 「${n}」를 아는군. 그래도 세 문제를 맞히면 여비를 주지.`, paid: '세 문제를 모두 맞혔구먼! 약속대로 여비를 주지.', fail: '틀렸네! 공부하고 다시 오게.', win: n => `세 문제를 모두 맞혔구먼! 약속대로 「${n}」를 알려 주지.` },
+    hae: { ok: '맞아요!', retry: '아니에요. 다시 골라 보세요.', ans: a => `정답은 ${a}${jong(a) ? '이에요' : '예요'}.`, three: (n, w) => `문제 세 개를 다 맞히면 X 키로 쓰는 ${w} 스킬 「${n}」를 알려 드릴게요. ${w}은 상점에서 살 수 있어요.`, known: n => `어머, 벌써 「${n}」를 아시네요. 그래도 세 문제 맞히면 용돈 드릴게요.`, paid: '세 문제 다 맞혔네요! 약속대로 용돈 드릴게요.', fail: '틀렸어요! 공부하고 다시 오세요.', win: n => `세 문제 다 맞혔네요! 약속대로 「${n}」 알려 드릴게요.` },
   };
   // [말하는 사람, 말투, 앞 대화에 이어지는 한마디, 질문, 정답, 오답들, 정답 뒤 한마디]
   const SQ = (spk, tone, lead, q, a, w, x) => [spk, { tone, lead, q, a, w, x }];
@@ -56,7 +57,7 @@
     'y_dadu.hasa': SQ('hasa', 'hao', '...아, 가기 전에 하나만. 시험 준비 삼아 묻겠소. 맞히면 사례하리다.', '이 나라의 수도, 이 성의 이름은 무엇이오?', '대도', ['임안', '카이펑'], '훗날 베이징이라 불릴 곳이오.'),
     'y_office.ali': SQ('ali', 'hao', '그 전에 셈 빠른 사람인지 하나 봅시다. 맞히면 수고비를 드리리다.', '우리처럼 서역에서 와 재정을 맡은 사람들을 뭐라 부르오?', '색목인', ['남인', '한인'], '여러 지역에서 온 사람들이란 뜻이오.'),
     'y_market.cotton': SQ('cotton', 'hae', '이 면포를 사려면 돈부터 아셔야죠. 맞히면 덤을 얹어 드릴게요.', '원나라에서 쓰는 지폐 이름은 뭘까요?', '교초', ['교자', '세폐'], '교자는 송나라 돈이고요.'),
-    'y_market.music': SQ('music', 'hage', '띵~ 귀가 밝구먼! 그럼 이것도 맞혀 보게. 맞히면 공연 수고비를 나눠 주지.', '노래와 연극이 어우러진 이 공연의 이름은 무엇인가?', '잡극', ['탈춤', '가부키'], '반주는 내 몫이고, 허허.'),
+    'y_market.music': SQ('music', 'hage', '띵~ 귀가 밝구먼! 그럼 이것도 맞혀 보게. 맞히면 공연 수고비를 나눠 주지.', '원나라 때 유행한, 노래와 연극이 어우러진 이 공연의 이름은 무엇인가?', '잡극', ['탈춤', '가부키'], '반주는 내 몫이고, 허허.'),
     'y_hangzhou.port': SQ('yport', 'hao', '바닷길 이야기가 나왔으니 하나 묻겠소. 맞히면 통행세를 돌려 드리리다.', '원나라도 큰 항구마다 두어 무역을 관리한 관청은 무엇이오?', '시박사', ['역참', '대운하'], '송나라 때처럼 시박사가 맡는다오.'),
     'y_city.astro': SQ('astro', 'hao', '허허, 기술이 오가듯 하늘의 지식도 오갔지. 문제 하나 내리다. 맞히면 사례하겠소.', '곽수경 공께서 만드신 달력의 이름은 무엇이오?', '수시력', ['태음력', '그레고리력'], '이슬람 천문학도 큰 도움이 되었지.'),
     'y_final.oldw': SQ('oldw', 'hage', '젊은이들이 똑똑하구먼. 이 늙은이 물음에도 답해 보게. 맞히면 쌈짓돈을 주지.', '요즘 붉은 두건을 두르고 들고일어난 무리를 뭐라 부르던가?', '홍건적', ['황건적', '여진족'], '세상이 뒤숭숭하구먼.'),
@@ -68,16 +69,12 @@
       Q('송나라 도시의 오락 거리는?', '와자', ['역참', '서원']), Q('와자 안의 전문 공연장은?', '구란', ['군기감', '시박사']), Q('와자가 번성한 까닭은?', '서민의 생활 수준이 높아져서', ['귀족만 즐겨서', '전쟁이 많아서'])] },
     'port.sailor': { spk: 'sailor', tone: 'hage', sk: 'spear', intro: '바다에선 바람만큼 작살 솜씨도 중요하지. 바다 이야기를 맞히면 내 작살 비법을 알려 주겠네.', qs: [
       Q('흐린 날 바다에서 길을 알려 주는 송의 발명품은?', '나침반', ['화약', '활자']), Q('송에서 무역을 관리한 관청은?', '시박사', ['역참', '군기감']), Q('송 때 동아시아와 인도양을 잇던 교역권은?', '동아시아·인도양 교역권', ['초원길 교역권', '지중해 교역권'])] },
-    'kf_workshop.lim': { spk: 'lim', tone: 'hao', sk: 'brush', intro: '기분 좋은 김에, 학문 이야기를 맞히면 붓으로 먹을 휘감는 묘법을 알려 드리리다.', qs: [
-      Q('남송의 주희가 집대성한 학문은?', '성리학', ['실학', '불교']), Q('송나라 때 학문과 교육을 하던 곳은?', '서원', ['구란', '역참']), Q('성리학이 훗날 된 것은?', '동아시아 여러 나라의 통치 이념', ['상인의 장부 규칙', '군대의 훈련법'])] },
     'y_steppe.herd': { spk: 'herd', tone: 'ban', sk: 'bow', intro: '맞아! 그 활 솜씨, 문제 맞히면 나도 알려 줄게!', qs: [
       Q('몽골 부족을 통일한 사람의 원래 이름은?', '테무친', ['쿠빌라이', '바투']), Q('칭기즈 칸으로 추대된 해는?', '1206년', ['1271년', '1368년']), Q('몽골군이 강했던 까닭은?', '강력한 기마병', ['거대한 함대', '화약 무기'])] },
     'y_camp.envoy': { spk: 'envoy', tone: 'hao', sk: 'sword', intro: '이 끈처럼 내 검도 바람처럼 부드럽게 휘오. 제국 이야기를 맞히면 그 검술을 알려 드리리다.', qs: [
       Q('칸의 자손들이 각자 다스린 땅은?', '울루스', ['와자', '서원']), Q('몽골 제국은 어떤 형태로 유지되었나?', '느슨한 연합', ['하나의 중앙 집권 국가', '도시 국가 동맹']), Q('울루스를 다스린 사람들은?', '칭기즈 칸의 자손들', ['송의 황족', '이슬람 상인'])] },
-    'y_market.book': { spk: 'bookm', tone: 'hao', sk: 'brush', intro: '그 이야기들, 다 붓끝에서 나온다오. 시장 이야기를 맞히면 내 붓놀림 비법을 알려 드리리다.', qs: [
-      Q('원나라에서 널리 쓰인 지폐는?', '교초', ['교자', '세폐']), Q('원나라 때 생산이 늘어 면직물이 발달한 작물은?', '목화', ['차', '사탕수수']), Q('원나라에서 크게 유행한 공연은?', '잡극', ['탈춤', '판소리'])] },
     'y_city.monk': { spk: 'monk', tone: 'hao', sk: 'spear', intro: '여러 사람이 모이니 지혜도 모이는 법이오. 이 거리 이야기를 맞히면 내 봉술 비법을 알려 드리리다.', qs: [
-      Q('『동방견문록』을 남긴 사람은?', '마르코 폴로', ['이븐 바투타', '곽수경']), Q('원나라에 전해진 종교가 아닌 것은?', '성리학', ['이슬람교', '크리스트교']), Q('14세기에 중국을 찾은 이슬람 여행가는?', '이븐 바투타', ['마르코 폴로', '칭기즈 칸'])] },
+      Q('『동방견문록』을 남긴 사람은?', '마르코 폴로', ['이븐 바투타', '곽수경']), Q('원나라 때 서쪽에서 들어온 종교가 아닌 것은?', '도교', ['이슬람교', '크리스트교']), Q('14세기에 중국을 찾은 이슬람 여행가는?', '이븐 바투타', ['마르코 폴로', '칭기즈 칸'])] },
   };
   const PAY = { rec: 5, quiz: 5, mg: 5 };
   const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -95,13 +92,13 @@
     }
     const ss = SIDE_SKILL[k];
     if (ss && !has('sk_' + k)) {
-      const w = WPN[ss.sk], T = TONE[ss.tone];
+      const w = WPN[ss.sk], T = TONE[ss.tone], known = !!R.skills[ss.sk];
       const ask = i => {
-        if (i >= ss.qs.length) return [[ss.spk, T.win(w.sk.n)], { flag: 'sk_' + k }, { skill: ss.sk }];
+        if (i >= ss.qs.length) return known ? [[ss.spk, T.paid], { flag: 'sk_' + k }, { money: 30, why: '' }] : [[ss.spk, T.win(w.sk.n)], { flag: 'sk_' + k }, { skill: ss.sk }];
         const q = ss.qs[i];
         return [[ss.spk, `${i + 1}번째 문제. ${q.q}`], { choice: shuffle([q.a, ...q.w]).map(o => ({ t: o, s: [['me', o], ...(o === q.a ? ask(i + 1) : [[ss.spk, T.fail]])] })) }];
       };
-      return [[ss.spk, ss.intro], [ss.spk, T.three(w.sk.n)],
+      return [[ss.spk, ss.intro], [ss.spk, known ? T.known(w.sk.n) : T.three(w.sk.n, w.n)],
         { choice: [{ t: '도전할게요!', s: [['me', '도전할게요!'], ...ask(0)] }, { t: '다음에 할게요.', s: [['me', '다음에 할게요.']] }] }];
     }
     return null;
@@ -155,7 +152,7 @@
     R.money += n; saveR(); syncHud(true);
     if (x != null) G.rpgFloat.push({ x, y, t: 0, txt: `+${n}냥` });
     else moneyPop(n);
-    SND.play('tick');
+    SND.play('coin');
   }
   window.addMoney = addMoney;
   function moneyPop(n) {
@@ -198,8 +195,8 @@
     if (R.money < it.price) { SND.play('bad'); return renderShop(`${it.price - R.money}냥 모자라요`); }
     if (it.id === 'potion' && R.potions >= 9) { SND.play('bad'); return renderShop('탕약은 9개까지'); }
     R.money -= it.price;
-    if (it.id === 'potion') { R.potions++; SND.play('good'); saveR(); syncHud(true); return renderShop('탕약 +1'); }
-    R.owned[it.id] = 1; R.wpn = it.id; saveR(); SND.play('win'); syncHud(true);
+    if (it.id === 'potion') { R.potions++; SND.play('buy'); saveR(); syncHud(true); return renderShop('탕약 +1'); }
+    R.owned[it.id] = 1; R.wpn = it.id; saveR(); SND.play('buy'); syncHud(true);
     renderShop(`${it.t} 장착`);
   }
   function closeShop() {
@@ -307,7 +304,7 @@
     const id = R.wpn, w = WPN[id], sk = w.sk;
     if (!R.skills[id]) { toast(`${w.n} 스킬 「${sk.n}」은 아직 배우지 못했다. 머리 위에 말풍선이 뜬 마을 사람에게 비법 시험을 받아 보자!`); SND.play('bad'); return; }
     if ((G.skCd[id] || 0) > 0) { toast(`「${sk.n}」 다시 쓰려면 ${Math.ceil(G.skCd[id])}초!`); return; }
-    G.skCd[id] = sk.cd; SND.play('flash'); G.shake = 0.2;
+    G.skCd[id] = sk.cd; SND.play('skill'); G.shake = 0.2;
     const P = G.P;
     if (id === 'brush') {
       for (const f of G.foes) { if (f.dead) continue; const dx = f.x - P.x, dy = (f.y - P.y) * 1.6; if (Math.hypot(dx, dy) < 58 + hitR(f)) damageFoe(f, 2, dx >= 0 ? 1 : -1); }
@@ -317,10 +314,10 @@
       [-0.28, -0.14, 0, 0.14, 0.28].forEach(v => fireArrow(v, 0.6)); // 다섯 발 모두 맞으면 피해 3
       G.rpgFx.push({ k: 'bowpull', t: 0, life: 0.25 });
     } else if (id === 'sword') {
-      G.sdash = { t: 0, dur: 0.2, dir: P.face, hit: new Set() }; G.inv = Math.max(G.inv, 0.35);
+      G.sdash = { t: 0, dur: 0.2, dir: P.face, hit: new Set() }; G.sInv = 1;
     } else if (id === 'spear') {
-      melee(118, 2, 12, 0);
-      G.rpgFx.push({ k: 'dragon', t: 0, life: 0.35, len: 118 });
+      melee(62, 1.5, 34, 0); G.rpgFx.push({ k: 'vsweep', t: 0, life: 0.25 });
+      setTimeout(() => { if (G.mode !== 'play') return; SND.play('swing'); melee(118, 1.5, 12, 0); G.rpgFx.push({ k: 'dragon', t: 0, life: 0.35, len: 118 }); }, 230);
     }
   }
   const _killFoe = killFoe;
@@ -407,7 +404,7 @@
     const w = WPN[R.wpn] || WPN.brush, sk = w.sk, cd = Math.max(0, G.skCd[R.wpn] || 0);
     const st = !R.skills[R.wpn] ? 'off' : cd > 0 ? 'cd' : 'ok';
     // 스킬은 아이콘으로만 (잠김 · 쿨타임 · 준비 완료)
-    const skIcon = `<span class="rh-sk ${st}" title="${sk.n}${st === 'off' ? ' (아직 못 배움)' : ''}" style="--p:${st === 'cd' ? (cd / sk.cd * 360).toFixed(0) : 0}deg"><i class="sk-ic sk-${R.wpn}"></i>${st === 'cd' ? `<b>${Math.ceil(cd)}</b>` : ''}${st === 'off' ? '<i class="sk-lock"></i>' : ''}</span>`;
+    const skIcon = `<span class="rh-sk ${st}" title="${sk.n}${st === 'off' ? ' (아직 못 배움)' : ''}" style="--p:${st === 'cd' ? (cd / sk.cd * 360).toFixed(0) : 0}deg"><i class="sk-ic sk-${R.wpn}"></i>${st === 'cd' ? `<b>${Math.ceil(cd)}</b>` : ''}${st === 'off' ? '<i class="sk-lock"></i>' : ''}<span class="kbd">X</span></span>`;
     const html = `<span class="rh-money"><i class="rh-coin"></i>${R.money}냥</span><span class="rh-pot" title="약초 탕약"><i class="sh-ic ic-potion"></i>${R.potions}</span><span class="rh-wpn" title="무기 바꾸기"><i class="sh-ic ic-${R.wpn}"></i>${w.n}</span>${skIcon}`;
     if (force || html !== lastHud) { hud.innerHTML = html; lastHud = html; }
   }
@@ -425,7 +422,7 @@
     } else if (e.code === 'KeyC') {
       if (R.potions <= 0) { toast('약초 탕약이 없다. 마을의 약초 상인에게서 살 수 있다!'); SND.play('bad'); return; }
       if (S.hp >= MAXHP) { toast('체력이 이미 가득하다.'); return; }
-      R.potions--; S.hp = Math.min(MAXHP, S.hp + 1); saveR(); updateHearts(); SND.play('good'); toast('약초 탕약을 마셨다! 체력 +1'); syncHud(true);
+      R.potions--; S.hp = Math.min(MAXHP, S.hp + 1); saveR(); updateHearts(); SND.play('potion'); toast('약초 탕약을 마셨다! 체력 +1'); syncHud(true);
       G.rpgFloat.push({ x: G.P.x, y: G.P.y - 34, t: 0, txt: '♥ +1' });
     }
   });
@@ -434,7 +431,7 @@
   FOE_KIND.boss.sp = 34; FOE_KIND.tank.hp = 9; FOE_KIND.tank.sp = 22;
   for (const A of Object.values(AREAS)) for (const e of A.ents) if (e.boss && e.phases && !e._hard) {
     e._hard = true; const keys = Object.keys(e.phases).map(Number).sort((a, b) => b - a), scripts = keys.map(k => e.phases[k]);
-    e.hp = 18; e.phases = {}; [18, 13, 8, 4].forEach((h, i) => { if (scripts[i]) e.phases[h] = scripts[i]; });
+    e.hp = 25; e.phases = {}; [25, 18, 11, 5].forEach((h, i) => { if (scripts[i]) e.phases[h] = scripts[i]; });
   }
   const liveBoss = () => G.foes.find(f => f.e.boss && !f.dead);
   bossPattern = function (f) {
@@ -488,6 +485,141 @@
       } else { // 돌진 : 번쩍인 뒤 달려든다
         f.flashT = 0.55; f.wind = 0.55;
       }
+    }
+  };
+
+  /* ---------------- 검 돌진 뒤 2초 무적 ---------------- */
+  G.sInv = 0;
+  const _hurt = hurt;
+  hurt = function (src) { if (G.sInv > 0) return; _hurt(src); };
+  const _uc3 = updateCombat;
+  updateCombat = function (dt) { if (G.sInv > 0) G.sInv -= dt; _uc3(dt); };
+
+  /* ---------------- 보스가 쓰러지면 : 터지고 녹아내리는 연출이 끝난 뒤 이야기 이어짐 ---------------- */
+  const _kf = killFoe;
+  killFoe = function (f) {
+    if (!f.e.boss || f._dying) return _kf(f);
+    f._dying = true; f.dead = true; G.hazards = []; G.shots = [];
+    G.foes.forEach(x => { if (x.e.temp) x.dead = true; });
+    G.mode = 'cut'; G.keys = {}; G.target = null;
+    G.bossDie = { x: f.x, y: f.y, t: 0, seed: f.seed, face: f.face };
+    SND.play('stamp'); G.shake = 0.6;
+    [0.3, 0.6, 0.9, 1.2].forEach(s => setTimeout(() => { SND.play('kill'); G.shake = 0.35; for (let i = 0; i < 4; i++) G.bursts.push({ x: f.x + (Math.random() - 0.5) * 50, y: f.y - Math.random() * 50, t: 0, big: true }); }, s * 1000));
+    setTimeout(() => { G.bossDie = null; G.mode = 'play'; f._dying = false; _kf(f); }, 2600);
+  };
+  G.bossDie = null;
+
+  /* 스킬 설명 말풍선 : 스킬 아이콘에 마우스를 올리면 */
+  const tip = document.createElement('div'); tip.id = 'skTip'; tip.hidden = true; $('stage').appendChild(tip);
+  const WDESC = { brush: '기본 무기. 가까이 공격하고, 날아오는 먹물탄을 튕겨 낼 수 있다.', bow: '화살을 멀리 쏜다. 대신 한 발의 힘은 약하다.', sword: '붓과 같은 거리에서 두 배로 강하게 벤다.', spear: '붓보다 조금 더 멀리 찌른다. 힘은 붓과 같다.' };
+  const showTip = on => {
+    if (!on) { tip.hidden = true; return; }
+    if (on === 'pot') { tip.innerHTML = `<b>약초 탕약</b><span class="tw">${R.potions}개</span><p>마시면 체력 ♥ 1칸 회복.</p><p class="tk"><span class="kbd">C</span> 키로 마시기 · 상점에서 15냥</p>`; tip.hidden = false; return; }
+    if (on === 'wpn') { const w = WPN[R.wpn] || WPN.brush, own = ORDER.filter(k => R.owned[k]).map(k => WPN[k].n).join(' · '); tip.innerHTML = `<b>${w.n}</b><span class="tw">들고 있는 무기</span><p>${WDESC[R.wpn] || ''}</p><p class="tk"><span class="kbd">Z</span> 공격 · <span class="kbd">Q</span> 무기 바꾸기</p><p class="tw">가진 무기 : ${own}</p>`; tip.hidden = false; return; }
+    const w = WPN[R.wpn] || WPN.brush, sk = w.sk, got = !!R.skills[R.wpn];
+    tip.innerHTML = `<b>${sk.n}</b><span class="tw">${w.n} 스킬</span><p>${sk.d}</p><p class="tk"><span class="kbd">X</span> 키로 사용 · 쿨타임 ${sk.cd}초</p>${got ? '' : '<p class="tl">아직 배우지 못했어요. 말풍선이 뜬 마을 사람의 비법 시험을 통과하면 배울 수 있어요.</p>'}`;
+    tip.hidden = false;
+  };
+
+  const tipKind = e => { const g = s => e.target.closest && e.target.closest(s); return g('.rh-sk') ? true : g('.rh-pot') ? 'pot' : g('.rh-wpn') ? 'wpn' : false; };
+  hud.addEventListener('pointermove', e => showTip(tipKind(e)));
+  hud.addEventListener('pointerleave', () => showTip(false));
+  hud.addEventListener('pointerdown', e => { const k = tipKind(e); if (k) { showTip(k); clearTimeout(tip._t); tip._t = setTimeout(() => showTip(false), 2600); } });
+
+  /* 연출 그리기 : 보스 녹아내림 · 검 무적 반짝임 · 창 세로 휘두르기 */
+  const _fg2 = ART.fg;
+  ART.fg = function (A, cam, t, dt) {
+    _fg2.apply(ART, arguments);
+    if (!S || !G.area || G.mode === 'title' || cam !== Math.round(G.cam)) return;
+    const c = ctx, P = G.P;
+    if (G.bossDie) drawBossDeath(c, cam, dt || 0.016);
+    if (G.sInv > 0 && G.mode === 'play') {
+      const a = 0.35 + Math.sin(G.t * 18) * 0.2; c.strokeStyle = `rgba(255,224,130,${a})`; c.lineWidth = 1.5;
+      c.beginPath(); c.ellipse(P.x - cam, P.y - 14, 12, 18, 0, 0, Math.PI * 2); c.stroke();
+    }
+    for (const f of G.rpgFx) if (f.k === 'vsweep') {
+      const k = f.t / f.life, x = P.x - cam + P.face * 16; c.strokeStyle = `rgba(240,240,255,${1 - k})`; c.lineWidth = 3;
+      c.beginPath(); c.arc(x - P.face * 10, P.y - 14, 30, -Math.PI / 2 - 0.9 + k * 0.4, Math.PI / 2 + 0.9 - (1 - k) * 0.4, P.face < 0); c.stroke();
+    }
+  };
+
+  /* ---------------- 보스 최후 : 직접 찍은 도트 프레임 (번쩍 → 금이 감 → 폭발 → 녹아내림 → 웅덩이) ---------------- */
+  function drawBossDeath(c, cam, dt) {
+    const B = G.bossDie; B.t += dt; const t = B.t, X = Math.round(B.x - cam), Y = Math.round(B.y);
+    const px = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(X + x * 2, Y + y * 2, w * 2, h * 2); }; // 2픽셀 단위 도트
+    const INK = '#1a0f24', MID = '#3a2458', HI = '#6a4a9a', EYE = '#ff5a4a', CRACK = '#ffe7a8';
+    if (!B.chunks) B.chunks = Array.from({ length: 22 }, (_, i) => ({ a: (i / 22) * Math.PI * 2 + Math.random() * 0.3, v: 50 + Math.random() * 90, s: 1 + (Math.random() * 2 | 0), spin: Math.random() < 0.5 }));
+    // 1) 0~0.7초 : 몸이 부풀며 빛나는 금이 간다
+    if (t < 0.9) {
+      const swell = t < 0.7 ? Math.floor(t * 4) : 3, shake = (Math.random() - 0.5) * 3;
+      c.save(); c.translate(shake, 0);
+      const w = 12 + swell, h = 14 + swell;
+      for (let row = 0; row < h; row++) { const half = Math.round(w * Math.sin(Math.PI * (row + 1) / (h + 1))); px(-half, -h + row, half * 2, 1, row < 3 ? HI : row < h - 3 ? MID : INK); }
+      px(-w, -2, w * 2, 2, INK);
+      px(-5, -h + 5, 3, 3, EYE); px(2, -h + 5, 3, 3, EYE);
+      if (t > 0.2) { const n = Math.floor((t - 0.2) * 14); for (let i = 0; i < n; i++) { const cx = ((i * 7) % (w * 2)) - w, cy = -2 - ((i * 5) % h); px(cx, cy, 1, 3, CRACK); px(cx + 1, cy + 2, 2, 1, CRACK); } }
+      c.restore();
+      if (t > 0.55) { const a = 1 - (t - 0.55) / 0.35; c.fillStyle = `rgba(255,246,220,${a})`; c.beginPath(); c.arc(X, Y - 26, 30 + (t - 0.55) * 160, 0, Math.PI * 2); c.fill(); }
+    }
+    // 2) 0.7초~ : 폭발 — 고리 모양 도트와 먹물 덩어리가 사방으로
+    if (t > 0.7 && t < 1.8) {
+      const k = (t - 0.7) / 1.1, r = 8 + k * 70;
+      for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2; c.fillStyle = k < 0.3 ? CRACK : `rgba(160,110,230,${1 - k})`; c.fillRect(Math.round(X + Math.cos(a) * r), Math.round(Y - 26 + Math.sin(a) * r * 0.6), 3, 3); }
+      for (const ch of B.chunks) { const tt = t - 0.7, x = X + Math.cos(ch.a) * ch.v * tt, y = Y - 26 + Math.sin(ch.a) * ch.v * tt * 0.7 + 90 * tt * tt; if (y > Y + 6) continue; c.fillStyle = ch.spin ? INK : MID; const s = ch.s * 2; c.fillRect(Math.round(x), Math.round(y), s + 2, s); c.fillStyle = HI; c.fillRect(Math.round(x), Math.round(y), 2, 2); }
+    }
+    // 3) 1.0초~ : 남은 몸이 프레임마다 아래로 녹아내린다 (열 하나하나가 다른 속도로 흘러내림)
+    if (t > 1.0) {
+      const k = Math.min(1, (t - 1.0) / 1.4), cols = 12;
+      if (!B.melt) B.melt = Array.from({ length: cols * 2 }, () => 0.6 + Math.random() * 0.8);
+      for (let i = -cols; i < cols; i++) {
+        const sp = B.melt[i + cols], top = Math.round(-14 + 14 * Math.min(1, k * sp) * Math.min(1, k * sp)), edge = Math.abs(i + 0.5) / cols;
+        const colTop = Math.round(top + edge * edge * 8);
+        if (colTop < 0) { px(i, colTop, 1, -colTop, MID); px(i, colTop, 1, 1, HI); }
+        if (k > 0.3 && (i * 7 + 3) % 5 === 0) { const drip = Math.floor((k - 0.3) * 8 * sp); px(i, 0, 1, Math.min(drip, 3), INK); }
+      }
+      if (k < 0.6) { px(-5, Math.round(-9 + 9 * k * 1.6), 3, 2, EYE); px(2, Math.round(-9 + 9 * k * 1.7), 3, 2, EYE); }
+      // 바닥에 넓어지는 먹물 웅덩이 (도트)
+      const pw = Math.round(6 + 20 * k);
+      px(-pw, 0, pw * 2, 2, INK); px(-pw + 2, 2, pw * 2 - 4, 1, INK); px(-Math.round(pw * 0.5), 0, Math.round(pw * 0.4), 1, HI);
+      if (k >= 1) { const fade = Math.min(1, (t - 2.4) / 0.4); if (fade > 0) { c.fillStyle = `rgba(0,0,0,0)`; } }
+    }
+  }
+
+  /* ---------------- 숨은 약초 탕약 : 편마다 4개, 사람이 잘 안 가는 구석에 (표시 없음) ---------------- */
+  const HIDDEN = {
+    song: [['kf_street', 'far', 'top'], ['border', 'far', 'bottom'], ['kf_market', 'far', 'bottom'], ['port', 'far', 'top']],
+    yuan: [['y_steppe', 'far', 'bottom'], ['y_camp', 'far', 'top'], ['y_market', 'far', 'bottom'], ['y_city', 'far', 'top']],
+    review: [['r_song', 'near', 'bottom'], ['r_song', 'far', 'top'], ['r_yuan', 'near', 'top'], ['r_yuan', 'far', 'bottom']],
+  };
+  const herbs = [];
+  for (const [camp, list] of Object.entries(HIDDEN)) list.forEach(([aid, side, edge], i) => {
+    const A = AREAS[aid]; if (!A) return;
+    const farRight = A.spawn[0] < A.L / 2; let x = (side === 'far') === farRight ? A.L - 22 : 22;
+    for (let tries = 0; tries < 20 && A.ents.some(e => (e.k === 'exit' || e.k === 'door') && Math.abs(e.x - x) < 30); tries++) x += x > A.L / 2 ? -14 : 14;
+    herbs.push({ id: `herb_${camp}_${i}`, area: aid, camp, x, y: edge === 'top' ? YT + 3 : YB - 3 });
+  });
+  const herbHere = () => S && G.area ? herbs.filter(h => h.area === S.area && h.camp === S.camp && !has(h.id)) : [];
+  const _uc4 = updateCombat;
+  updateCombat = function (dt) {
+    _uc4(dt);
+    for (const h of herbHere()) if (Math.abs(G.P.x - h.x) < 12 && Math.abs(G.P.y - h.y) < 12) {
+      setFlag(h.id);
+      if (S.hp < MAXHP) { S.hp++; updateHearts(); toast('숨겨진 약초 탕약을 찾았다! 체력 +1', 'item'); }
+      else { R.potions = Math.min(9, R.potions + 1); saveR(); syncHud(true); toast('숨겨진 약초 탕약을 찾았다! 가방에 넣었다', 'item'); }
+      SND.play('potion'); G.rpgFloat.push({ x: h.x, y: h.y - 20, t: 0, txt: '♥' });
+    }
+  };
+  const _fg3 = ART.fg;
+  ART.fg = function (A, cam) {
+    _fg3.apply(ART, arguments);
+    if (!S || !G.area || G.mode === 'title' || cam !== Math.round(G.cam)) return;
+    for (const h of herbHere()) { // 작은 약초 병 (반짝임 표시 없이 바닥에 놓여 있음)
+      const x = Math.round(h.x - cam), y = Math.round(h.y); if (x < -10 || x > 490) continue;
+      ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(x - 3, y, 7, 1);
+      ctx.fillStyle = '#7a5134'; ctx.fillRect(x - 1, y - 9, 3, 2);
+      ctx.fillStyle = '#e8dcc4'; ctx.fillRect(x - 2, y - 7, 5, 7);
+      ctx.fillStyle = '#4f9a63'; ctx.fillRect(x - 2, y - 4, 5, 4);
+      ctx.fillStyle = '#9fd8a8'; ctx.fillRect(x - 1, y - 4, 1, 2);
     }
   };
 

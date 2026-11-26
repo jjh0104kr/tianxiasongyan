@@ -49,6 +49,16 @@ const SND = (() => {
     hit: () => { tone(140, 0.09, 'square', 0.05, 0, -60); tone(300, 0.05, 'triangle', 0.04); },
     hurt: () => tone(220, 0.25, 'sawtooth', 0.05, 0, -140),
     kill: () => [300, 450, 600].forEach((f, i) => tone(f, 0.1, 'triangle', 0.05, i * 0.05)),
+    coin: () => { tone(1320, 0.06, 'square', 0.025); tone(1760, 0.12, 'square', 0.025, 0.06); },
+    buy: () => [880, 1100, 1320].forEach((f, i) => tone(f, 0.09, 'triangle', 0.05, i * 0.06)),
+    stamp: () => { tone(90, 0.25, 'sine', 0.12, 0, -40); tone(160, 0.08, 'square', 0.04); },
+    page: () => { tone(500, 0.07, 'triangle', 0.03, 0, 300); tone(700, 0.06, 'triangle', 0.025, 0.05, 200); },
+    toggle: () => tone(760, 0.04, 'square', 0.03),
+    close: () => tone(520, 0.07, 'triangle', 0.035, 0, -200),
+    ui: () => tone(980, 0.03, 'triangle', 0.025),
+    lock: () => { tone(200, 0.06, 'square', 0.04); tone(150, 0.08, 'square', 0.04, 0.07); },
+    potion: () => [520, 660, 880].forEach((f, i) => tone(f, 0.1, 'sine', 0.05, i * 0.07)),
+    skill: () => { tone(300, 0.25, 'sawtooth', 0.035, 0, 600); tone(600, 0.2, 'triangle', 0.04, 0.05, 400); },
   };
   return { unlock, play(k) { try { P[k] && P[k](); } catch (e) { } }, get on() { return on; },
     toggle() { on = !on; try { localStorage.setItem('cheonha-sound', on ? 'on' : 'off'); } catch (e) { } return on; } };
@@ -176,7 +186,7 @@ function exec(c, next) {
   if (c.ink) { G.inkFx = { t: 0, x: 548, y: 204, to: [[470, 206], [500, 238]] }; G.shake = 0.3; SND.play('bad'); return next(); }
   if (c.flag) { setFlag(c.flag); refreshEnts(); updateHud(); return next(); }
   if (c.give) return giveRec(c.give, next);
-  if (c.item) { S.items[c.item] = 1; save(); toast(c.toast); SND.play('good'); return next(); }
+  if (c.item) { S.items[c.item] = 1; save(); toast(c.toast, 'item'); SND.play('good'); return next(); }
   if (c.quiz) { if (S.quiz[c.quiz]) return next(); hideDialog(); return Quiz.open(c.quiz, next); }
   if (c.mg) { if (S.mg[c.mg]) return next(); hideDialog(); return MG.start(c.mg, () => { S.mg[c.mg] = 1; save(); next(); }); }
   if (c.img) { hideDialog(); return showImg(c.img, c.cap, next); }
@@ -367,7 +377,7 @@ function showImg(key, cap, next) {
   $('imgGo').onclick = go; G.imgClose = go;
 }
 let toastT = 0;
-function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2400); }
+function toast(t, kind) { const el = $('toast'); el.textContent = t; el.classList.toggle('item', kind === 'item'); el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2400); }
 function showChapter(n, next) {
   const ch = C().chapters[n]; const el = $('chap');
   el.querySelector('.chap-part').textContent = `${C().tag} · ${C().title}`;
@@ -993,7 +1003,7 @@ function openMap() {
 function closeMap() { $('map').hidden = true; $('map').innerHTML = ''; G.overlay = null; if (G.mode === 'play') updateHud(); }
 function travel() {
   const d = C().dest[S.pending]; if (!d) return;
-  closeMap(); S.pending = null; S.hp = MAXHP; updateHearts(); save(); SND.play('flash');
+  closeMap(); S.pending = null; save(); SND.play('flash'); // 체력은 지역을 옮겨도 그대로 이어진다
   G.mode = 'trans';
   showChapter(d.ch, () => transition(d.area));
 }
@@ -1013,11 +1023,11 @@ function openRecs(sel, campId, still) {
       return `<button class="rec-slot ${got ? 'got' : ''} ${r === id ? 'sel' : ''}" data-r="${r}" ${got ? '' : 'disabled'}><span class="rs-seal">${got ? REC[r].seal : '？'}</span><span class="rs-t">${got ? escH(REC[r].t) : '아직 지워진 기록'}</span><span class="rs-c">${escH(REC[r].ch)}</span></button>`;
     }).join('')}</div>
     <div class="recs-detail" id="recsDetail">${id ? recCardHTML(id, true) : '<p class="empty">아직 복원한 기록이 없다.</p>'}</div></div></div>`;
-  el.hidden = false; G.overlay = 'recs'; if (!still) SND.play('open'); hidePrompt();
+  el.hidden = false; G.overlay = 'recs'; SND.play('page'); hidePrompt();
   $('recsX').onclick = closeOv;
   el.querySelectorAll('.rec-slot.got').forEach(b => b.onclick = () => {
     el.querySelectorAll('.rec-slot').forEach(x => x.classList.toggle('sel', x === b));
-    $('recsDetail').innerHTML = recCardHTML(b.dataset.r, true); SND.play('tick');
+    $('recsDetail').innerHTML = recCardHTML(b.dataset.r, true); SND.play('page');
   });
   el.querySelectorAll('.rtab').forEach(b => b.onclick = () => openRecs(null, b.dataset.c, true));
 }function openLog() {
@@ -1071,6 +1081,7 @@ function overlayKey(e) {
   if (o === 'guide') { if (['Enter', 'Space', 'NumpadEnter', 'Escape'].includes(e.code) && !e.repeat) G.guideClose && G.guideClose(); return; }
   if (o === 'map') { if (e.code === 'Escape' || e.code === 'KeyM') closeMap(); else if ((e.code === 'Enter' || e.code === 'NumpadEnter') && S.pending && G.mode !== 'script') travel(); return; }
   if (o === 'ending') { if (['Enter', 'Space'].includes(e.code)) G.endingNext && G.endingNext(); return; }
+  if (o === 'theend') { if (['Enter', 'Space', 'NumpadEnter'].includes(e.code) && !e.repeat) G.theendGo && G.theendGo(); return; }
   if (o === 'modal') return;
   if (e.code === 'Escape' || (o === 'recs' && e.code === 'KeyJ') || (o === 'log' && e.code === 'KeyL')) closeOv();
 }
@@ -1091,12 +1102,23 @@ function campDone() {
   S.done = true; save();
   const prog = loadProg(), score = scoreOf(S), rank = rankOf(score);
   const prev = prog[S.camp];
-  prog[S.camp] = { done: true, score: prev && prev.score > score ? prev.score : score, rank: prev && prev.score > score ? prev.rank : rank, last: { score, rank, qfirst: S.qfirst, deaths: S.deaths, time: S.play } };
+  const keepPrev = prev && prev.score > score;
+  prog[S.camp] = { done: true, score: keepPrev ? prev.score : score, rank: keepPrev ? prev.rank : rank, time: keepPrev ? (prev.time || (prev.last && prev.last.time)) : S.play, last: { score, rank, qfirst: S.qfirst, deaths: S.deaths, time: S.play } };
   const allDone = CAMP_ORDER.every(c => prog[c] && prog[c].done);
   if (allDone) { const avg = Math.round(CAMP_ORDER.reduce((a, c) => a + prog[c].score, 0) / 3); prog.final = { score: avg, rank: rankOf(avg) }; }
   saveProg(prog);
   // 챕터가 끝나면 먼저 이번 편의 역사 노트를 보여 주고, 노트를 닫으면 클리어 창
-  G.recsAfter = () => showResult(score, rank, prog, allDone); openRecs(null, S.camp);
+  const notes = () => { G.recsAfter = () => showResult(score, rank, prog, allDone); openRecs(null, S.camp); };
+  if (S.camp === 'review') showTheEnd(notes); else notes();
+}
+/* 마지막 편이 끝나면 : 화면이 서서히 검게 변하고 '천하상단 : 사라진 교역 지도 / THE END'. 연출이 끝난 뒤에만 넘어간다 */
+function showTheEnd(done) {
+  let el = $('theend'); if (!el) { el = document.createElement('div'); el.id = 'theend'; $('stage').appendChild(el); }
+  el.innerHTML = `<div class="te-text"><p class="te-title">천하상단 : 사라진 교역 지도</p><p class="te-end">THE END</p></div><p class="te-hint">화면을 누르면 계속</p>`;
+  el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); G.overlay = 'theend';
+  setTimeout(() => SND.play('win'), 1500);
+  let ready = false; setTimeout(() => { ready = true; el.classList.add('ready'); }, 2700);
+  const go = () => { if (!ready) return; ready = false; G.theendGo = null; el.classList.add('out'); setTimeout(() => { el.hidden = true; el.classList.remove('go', 'out', 'ready'); G.overlay = null; done(); }, 500); };  el.onclick = go; G.theendGo = go;
 }
 function rankSeal(r, big, useImg) {
   const u = useImg && UIART.rank[r]; // 랭크 도장 그림은 챕터 선택창에서만
@@ -1125,7 +1147,7 @@ function showResult(score, rank, prog, allDone) {
   const sc = $('rsScore'), t0 = performance.now();
   const tick = now => { const k = Math.min(1, (now - t0 - 900) / 900); if (!sc.isConnected) return; sc.textContent = Math.round(score * Math.max(0, k)); if (k < 1) requestAnimationFrame(tick); };
   requestAnimationFrame(tick);
-  setTimeout(() => { SND.play('rec'); G.shake = 0.2; }, 1900);
+  setTimeout(() => { SND.play('stamp'); G.shake = 0.2; }, 1900);
   const close = () => { el.hidden = true; el.classList.remove('result'); el.innerHTML = ''; G.overlay = null; };
   if (next) $('resNext').onclick = () => { close(); startCamp(next, true); };
   $('resCamps').onclick = () => { close(); toTitle(); openCamps(); };
@@ -1170,7 +1192,7 @@ function openCamps() {
   const el = $('camps'), prog = loadProg(); G.overlay = 'modal';
   const card = (c, i) => {
     const camp = CAMPS[c], sv = loadSave(c), pr = prog[c], open = campOpen(c, prog);
-    const best = pr && pr.done ? `${pr.score}점` : '—';
+    const best = pr && pr.done ? `${pr.score}점<small>${fmtTime(pr.time || (pr.last && pr.last.time) || 0)}</small>` : '—';
     return `<article class="cc2 ${open ? '' : 'locked'}" style="--d:${i * 0.12}s">
       <div class="cc2-frame"><canvas class="cc2-img" width="480" height="216" data-c="${c}"></canvas></div>
       <p class="cc2-tag">${escH(camp.tag)}</p><h3>${escH(camp.title)}</h3><p class="cc2-sub">${escH(camp.sub)}</p>
@@ -1182,10 +1204,11 @@ function openCamps() {
   };
   el.innerHTML = `<div class="cs-wrap"><header class="cs-head"><h2>챕터 선택</h2><button class="cs-x" id="campsX" aria-label="닫기">✕</button></header>
     <div class="cs-grid">${CAMP_ORDER.map(card).join('')}</div>
-    <footer class="cs-foot">${prog.final ? `최종 랭크 ${rankSeal(prog.final.rank, false, true)}` : ''}</footer></div>`;
-  el.classList.add('cs'); el.hidden = false; el.querySelectorAll('.cc2-img').forEach(drawThumb);
+    <footer class="cs-final"><span class="lab">최종 랭크</span><span class="val">${prog.final ? rankSeal(prog.final.rank, false, true) : '—'}</span><span class="lab">평균 점수</span><span class="val">${prog.final ? prog.final.score + '점' : '—'}</span><em>${prog.final ? '' : '세 편을 모두 클리어하면 기록돼요'}</em></footer></div>`;
+  el.classList.add('cs'); el.hidden = false; el.querySelectorAll('.cc2-img').forEach(drawThumb); SND.play('open');
+  el.querySelectorAll('.cc2.locked').forEach(c => c.onclick = () => SND.play('lock'));
   const close = () => { el.hidden = true; G.overlay = null; };
-  $('campsX').onclick = close;
+  $('campsX').onclick = () => { SND.play('close'); close(); };
   // 처음부터 : 그 편의 이야기만 처음부터 (돈 · 무기 · 스킬 · 다른 편 기록은 그대로)
   el.querySelectorAll('[data-new]').forEach(b => b.onclick = () => {
     const c = b.dataset.new, sv = loadSave(c), go = () => { close(); startCamp(c, true); };
@@ -1297,7 +1320,7 @@ function preload() {
   const ui = UIART.load.then(step); // 결과창 · 랭크 조각 자르기까지 끝낸다
   Promise.all([...imgs, fonts, ui]).then(() => setTimeout(() => {
     $('loading').classList.add('out');
-    setTimeout(() => { $('loading').hidden = true; toTitle(); }, 450);
+    setTimeout(() => { $('loading').hidden = true; toTitle(); autoFull = true; setFull(true, true); }, 450);
   }, 250));
 }
 
@@ -1323,31 +1346,33 @@ function openSettings() {
   const el = $('menu');
   const fs = () => !!document.fullscreenElement;
   const mode = () => lsGet(CTRL_KEY, 'auto');
-  const modeName = { auto: '자동', pc: 'PC', mobile: '모바일' };
-  el.innerHTML = `<div class="menu-panel set-panel" role="dialog" aria-label="설정"><h2>설정</h2>
-    <div class="set-list">
-      <div class="set-row"><span>소리</span><button class="btn sm" id="setSnd">${SND.on ? '켜짐' : '꺼짐'}</button></div>
-      <div class="set-row"><span>전체 화면</span><button class="btn sm" id="setFs">${fs() ? '켜짐' : '꺼짐'}</button></div>
-      <div class="set-row"><span>조작 모드</span><div class="seg" id="setMode">${['auto', 'pc', 'mobile'].map(m => `<button class="${mode() === m ? 'on' : ''}" data-m="${m}">${modeName[m]}</button>`).join('')}</div></div>
-      ${autoUnlocked() ? `<div class="set-row"><span>자동 넘기기 버튼</span><button class="btn sm" id="setAuto">${lsGet(AUTO_SHOW, '1') === '1' ? '켜짐' : '꺼짐'}</button></div>` : ''}
-      <div class="set-row"><span>조작 방법</span><button class="btn sm" id="setHelp">보기</button></div>
+  const tg = (id, on) => `<button class="tg ${on ? 'on' : ''}" id="${id}" role="switch" aria-checked="${on}"><i></i></button>`;
+  const setTg = (id, on) => { const b = $(id); if (b) { b.classList.toggle('on', on); b.setAttribute('aria-checked', on); } };
+  el.innerHTML = `<div class="set2" role="dialog" aria-label="설정">
+    <header><h2>설정</h2><button class="set-x" id="setX" aria-label="닫기">✕</button></header>
+    <div class="set-sec">
+      <div class="set-row"><span>소리</span>${tg('setSnd', SND.on)}</div>
+      <div class="set-row"><span>전체 화면</span>${tg('setFs', fs())}</div>
+      <div class="set-row"><span>조작 모드</span><div class="seg" id="setMode">${[['auto', '자동'], ['pc', 'PC'], ['mobile', '모바일']].map(([m, n]) => `<button class="${mode() === m ? 'on' : ''}" data-m="${m}">${n}</button>`).join('')}</div></div>
+      ${autoUnlocked() ? `<div class="set-row"><span>자동 넘기기 버튼</span>${tg('setAuto', lsGet(AUTO_SHOW, '1') === '1')}</div>` : ''}
     </div>
-    <div class="code-row"><input id="codeIn" autocomplete="off" spellcheck="false" placeholder="코드 입력"><button class="btn gold" id="codeGo">확인</button></div>
-    <p class="menu-note" id="codeMsg"></p>
-    <div class="menu-btns row"><button class="btn gold" id="setX">닫기</button></div></div>`;
-  el.hidden = false; G.overlay = 'menu'; hidePrompt();
-  $('setSnd').onclick = () => { SND.toggle(); $('setSnd').textContent = SND.on ? '켜짐' : '꺼짐'; };
+    <button class="set-link" id="setHelp"><span>조작 방법</span><b>›</b></button>
+    <div class="set-code"><input id="codeIn" autocomplete="off" spellcheck="false" placeholder="코드 입력"><button id="codeGo">확인</button></div>
+    <p class="set-msg" id="codeMsg"></p></div>`;
+  el.hidden = false; G.overlay = 'menu'; hidePrompt(); SND.play('open');
+  $('setSnd').onclick = () => { SND.toggle(); setTg('setSnd', SND.on); SND.play('toggle'); };
   $('setFs').onclick = async () => {
+    SND.play('toggle');
     try { if (fs()) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch (e) { $('codeMsg').textContent = '이 브라우저에서는 전체 화면을 쓸 수 없어요.'; }
-    setTimeout(() => { if ($('setFs')) $('setFs').textContent = fs() ? '켜짐' : '꺼짐'; fit(); }, 200);
+    setTimeout(() => { setTg('setFs', fs()); fit(); }, 200);
   };
   $('setMode').querySelectorAll('button').forEach(b => b.onclick = () => {
-    lsSet(CTRL_KEY, b.dataset.m); $('setMode').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    lsSet(CTRL_KEY, b.dataset.m); $('setMode').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); SND.play('toggle');
     if (window.applyCtrlMode) window.applyCtrlMode();
   });
-  if ($('setAuto')) $('setAuto').onclick = () => { lsSet(AUTO_SHOW, lsGet(AUTO_SHOW, '1') === '1' ? '0' : '1'); $('setAuto').textContent = lsGet(AUTO_SHOW, '1') === '1' ? '켜짐' : '꺼짐'; syncAutoBtn(); };
+  if ($('setAuto')) $('setAuto').onclick = () => { lsSet(AUTO_SHOW, lsGet(AUTO_SHOW, '1') === '1' ? '0' : '1'); setTg('setAuto', lsGet(AUTO_SHOW, '1') === '1'); SND.play('toggle'); syncAutoBtn(); };
   $('setHelp').onclick = () => { closeOv(); showHelp(); };
-  $('setX').onclick = closeOv;
+  $('setX').onclick = () => { SND.play('close'); closeOv(); };
   const go = () => {
     const v = ($('codeIn').value || '').trim().toLowerCase();
     if (v === 'eastbusan') { CODE_OK = true; lsSet(AUTO_SHOW, '1'); SND.play('win'); syncAutoBtn(); openSettings(); $('codeMsg').textContent = '자동 넘기기 버튼이 생겼어요.'; }
@@ -1357,8 +1382,22 @@ function openSettings() {
   };
   $('codeGo').onclick = go;
   $('codeIn').addEventListener('keydown', e => { e.stopPropagation(); if (e.code === 'Enter' || e.code === 'NumpadEnter') go(); if (e.code === 'Escape') closeOv(); });
+}function setFull(on, silent) {
+  const el = document.documentElement;
+  if (on && !document.fullscreenElement && el.requestFullscreen) return el.requestFullscreen().catch(() => { if (!silent) toast('이 화면에서는 전체 화면을 쓸 수 없어요.'); });
+  if (!on && document.fullscreenElement) return document.exitFullscreen().catch(() => { });
 }
-document.addEventListener('fullscreenchange', () => setTimeout(fit, 100));$('hudSet').onclick = () => { if ((G.mode === 'play' || G.mode === 'script') && !G.overlay && !MG.active && !Quiz.active) openSettings(); };
+document.addEventListener('fullscreenchange', () => {
+  setTimeout(fit, 100);
+  if (document.fullscreenElement) toast('ESC를 누르면 전체 화면이 꺼집니다');
+  else toast('설정에서 전체 화면을 켤 수 있어요');
+  document.querySelectorAll('.fs-btn').forEach(b => b.classList.toggle('on', !!document.fullscreenElement));
+});
+// 브라우저는 사용자의 클릭 · 키 입력 없이 전체 화면을 켜지 못해서, 로딩이 끝난 뒤 첫 입력 때 바로 켠다
+let autoFull = false;
+const tryAutoFull = () => { if (!autoFull || document.fullscreenElement) return; autoFull = false; setFull(true); };
+window.addEventListener('pointerdown', tryAutoFull, true);
+document.querySelectorAll('.fs-btn').forEach(b => b.onclick = e => { e.stopPropagation(); setFull(!document.fullscreenElement); }); window.addEventListener('keydown', tryAutoFull, true);$('hudSet').onclick = () => { if ((G.mode === 'play' || G.mode === 'script') && !G.overlay && !MG.active && !Quiz.active) openSettings(); };
 
 /* ---------------- 감점 · 패배 ---------------- */
 function penalize(pts, hp) {
@@ -1452,5 +1491,8 @@ UIART.load.then(() => { const p = loadProg(); if (p.final) $('titleRank').innerH
 requestAnimationFrame(loop);
 window.__G = G;
 setInterval(syncAutoBtn, 500);
+document.addEventListener('dragstart', e => e.preventDefault());
+document.addEventListener('contextmenu', e => { if (!(e.target && e.target.tagName === 'INPUT')) e.preventDefault(); });
+document.addEventListener('pointerdown', e => { const b = e.target.closest && e.target.closest('.btn, .cbtn, .hud-btn, .t-btn, .t-quit, .menu-grid button, .set-link, .rtab, .rec-slot'); if (b && !b.disabled) { SND.unlock(); SND.play('ui'); } }, true);
 $('dlgX').onclick = e => { e.stopPropagation(); endTalk(); };
 setInterval(() => { $('dlgX').hidden = !(G.npcTalk && G.mode === 'script' && !G.overlay && !Quiz.active && !MG.active); }, 150);
