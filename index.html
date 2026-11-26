@@ -1,0 +1,125 @@
+<title>천하상단: 사라진 교역 지도</title>
+<meta name="description" content="중학교 2학년 역사 교육용 웹 RPG — 송나라 편 · 원나라 편 · 총복습">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Song+Myung&display=swap">
+<link rel="stylesheet" href="css/style.css">
+
+<div id="app">
+  <div id="stage">
+    <canvas id="cv" width="960" height="540" aria-label="게임 화면"></canvas>
+
+    <!-- HUD -->
+    <header id="hud" hidden>
+      <div class="hud-left">
+        <span class="hud-ch" id="hudCh"></span>
+        <div class="hud-where"><b id="hudPlace"></b><span id="hudEra"></span></div>
+      </div>
+      <div class="hud-right">
+        <button class="hud-btn" id="hudRecBtn" title="역사 노트 (J)"><span class="hud-label">역사 노트</span><b id="hudRec">0 / 9</b><span class="kbd">J</span></button>
+        <button class="hud-btn" id="hudMap" title="지도 (M)">지도 <span class="kbd">M</span></button>
+        <button class="hud-btn" id="hudSet" title="설정">설정</button>
+        <button class="hud-btn" id="hudMenu" title="메뉴 (Esc)">메뉴 <span class="kbd">Esc</span></button>
+      </div>
+    </header>
+    <div id="goal" hidden><span class="goal-tag">목표</span><span id="goalText"></span></div>
+    <div id="hearts" hidden aria-label="체력"></div>
+    <div id="keyhint" hidden><span class="kbd">←→↑↓</span> 이동 · 두 번 연타 달리기 · <span class="kbd">Z</span> 공격 · <span class="kbd">Space</span> 대화·조사</div>
+    <div id="prompt" hidden><span class="kbd">Space</span><span id="promptText"></span></div>
+    <div id="focusTag" hidden></div>
+    <div id="areaBanner" hidden><span class="ab-ch" id="abCh"></span><b id="abPlace"></b><span id="abEra"></span></div>
+
+    <!-- 대화창 -->
+    <div id="choices" hidden></div>
+    <section id="dlg" hidden aria-live="polite">
+      <div class="dlg-pt" id="ptBox"><canvas id="pt" width="26" height="26"></canvas></div>
+      <div class="dlg-main">
+        <div class="dlg-name" id="dlgName"></div>
+        <p class="dlg-text" id="dlgText"></p>
+        <span class="dlg-more" id="dlgMore" hidden>▼</span>
+      </div>
+    </section>
+
+    <div id="toast" role="status"></div>
+    <div id="miniMapBox" aria-hidden="true"></div>
+    <div id="compassFx" aria-hidden="true"></div>
+    <div id="guide" class="ov" hidden></div>
+    <div id="autoBox" hidden><button id="autoBtn" title="대화를 자동으로 넘깁니다">▶ 자동 넘기기</button><button id="fastBtn" title="대화를 매우 빠르게 넘깁니다">⏩ 매우 빠르게</button></div>
+    <div id="penalty" aria-live="polite"></div>
+    <div id="defeat" class="ov" hidden></div>
+    <div id="intro" class="ov" hidden></div>
+
+    <div id="chap" class="ov" hidden>
+      <div class="chap-inner"><p class="chap-part"></p><p class="chap-n"></p><h2 class="chap-t"></h2><p class="chap-s"></p><span class="chap-skip">클릭하여 계속</span></div>
+    </div>
+
+    <div id="imgpop" class="ov" hidden></div>
+    <div id="quiz" class="ov" hidden></div>
+    <div id="recpop" class="ov" hidden></div>
+    <div id="map" class="ov" hidden></div>
+    <div id="recs" class="ov" hidden></div>
+    <div id="logov" class="ov" hidden></div>
+    <div id="menu" class="ov" hidden></div>
+    <div id="mg" class="ov" hidden></div>
+    <div id="ending" class="ov" hidden></div>
+    <div id="credits" class="ov" hidden></div>
+
+    <!-- 타이틀 -->
+    <section id="loading" class="ov loading" aria-live="polite">
+      <div class="load-inner">
+        <p class="load-name">천하상단</p>
+        <div class="load-bar"><i id="loadFill"></i></div>
+        <p class="load-msg" id="loadMsg">불러오는 중… 0%</p>
+      </div>
+    </section>
+
+    <section id="title" class="ov title" hidden>
+      <div class="title-inner">
+        <img class="t-logo" id="tLogo" alt="천하상단: 사라진 교역 지도">
+        <nav class="title-menu">
+          <button class="t-btn" id="btnNew" aria-label="게임 시작"><img id="tBtn1" alt="게임 시작"></button>
+          <button class="t-btn" id="btnCont" aria-label="이어하기"><img id="tBtn2" alt="이어하기"><small id="contInfo"></small></button>
+          <button class="t-btn" id="btnCred" aria-label="제작자"><img id="tBtn3" alt="제작자"></button>
+        </nav>
+        <p class="title-rank" id="titleRank"></p>
+        <div class="t-links"><button class="t-quit" id="btnSet">⚙ 설정</button><button class="t-quit" id="btnQuit">게임 종료</button></div>
+      </div>
+    </section>
+    <div id="camps" class="ov modal" hidden></div>
+
+    <div id="namebox" class="ov modal" hidden>
+      <div class="modal-panel"><p class="eyebrow">천하상단 견습 상인 명부</p><h2>주인공의 이름은?</h2>
+        <input id="nameIn" maxlength="8" autocomplete="off" aria-label="주인공 이름">
+        <p class="modal-note">최대 8글자. 비워 두면 ‘진호’가 됩니다. 세 편 모두 같은 이름으로 여행합니다.</p>
+        <div class="menu-btns row"><button class="btn" id="nameBack">뒤로</button><button class="btn gold" id="nameGo">모험 시작 <span class="kbd">Enter</span></button></div></div>
+    </div>
+    <div id="confirm" class="ov modal" hidden>
+      <div class="modal-panel"><h2>모든 데이터가 초기화됩니다</h2><p class="modal-note" id="confMsg"></p>
+        <div class="menu-btns row"><button class="btn" id="confNo">취소</button><button class="btn danger" id="confYes">초기화하고 시작</button></div></div>
+    </div>
+    <div id="about" class="ov modal" hidden>
+      <div class="modal-panel wide"><p class="eyebrow">제작자</p><h2>천하상단: 사라진 교역 지도</h2>
+        <dl class="about">
+          <dt>제작</dt><dd>동부산역사교사모임 노재훈T</dd>
+          <dt>구성</dt><dd>제1부 송나라 편 · 제2부 원나라 편 · 제3부 천하상단의 마지막 장부(총복습)</dd>
+          <dt>글꼴</dt><dd>Song Myung, Gowun Dodum (Google Fonts)</dd>
+        </dl>
+        <p class="modal-note">게임 속 상인 · 관리 · 군인 등 인물과 미션, 먹물 그림자는 이야기를 위해 만든 창작입니다. 조광윤, 왕안석, 칭기즈 칸, 쿠빌라이 칸, 마르코 폴로, 곽수경 등 역사 인물과 기록 카드의 ‘역사 노트’, 퀴즈 해설은 교과서의 역사적 사실을 따릅니다.</p>
+        <div class="menu-btns row"><button class="btn gold" id="aboutX">닫기</button></div></div>
+    </div>
+    <div id="quit" class="ov modal" hidden>
+      <div class="modal-panel"><p class="eyebrow">게임 종료</p><h2>오늘의 여행은 여기까지</h2><p class="modal-note">진행 상황은 자동으로 저장되었습니다. 이 탭을 닫아도 되고, 다음에 ‘이어하기’로 돌아올 수 있어요.</p>
+        <div class="menu-btns row"><button class="btn gold" id="quitBack">타이틀로 돌아가기</button></div></div>
+    </div>
+
+    <div id="fade"></div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/data_yuan.js"></script>
+<script src="js/data_review.js"></script>
+<script src="js/art.js"></script>
+<script src="js/minigames.js"></script>
+<script src="js/game.js"></script>
+<script src="js/rpg.js"></script>

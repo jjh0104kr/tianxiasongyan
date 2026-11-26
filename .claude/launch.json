@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "game",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\Users\\USER\\AppData\\Local\\Temp\\claude\\15af9671870f89f0\\b0e11601-711e-4b7d-b649-dddd7da073ed\\scratchpad\\serve.ps1", "-Root", "C:\\Users\\USER\\Desktop\\중국사 게임", "-Port", "8123"],
+      "port": 8123
+    }
+  ]
+}
