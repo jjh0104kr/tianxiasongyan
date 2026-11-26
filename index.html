@@ -1,4 +1,5 @@
 <title>천하상단: 사라진 교역 지도</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="중학교 2학년 역사 교육용 웹 RPG — 송나라 편 · 원나라 편 · 총복습">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,6 +38,7 @@
         <div class="dlg-name" id="dlgName"></div>
         <p class="dlg-text" id="dlgText"></p>
         <span class="dlg-more" id="dlgMore" hidden>▼</span>
+        <button class="dlg-x" id="dlgX" hidden aria-label="대화 끝내기 (Esc)" title="대화 끝내기 (Esc)">✕</button>
       </div>
     </section>
 
@@ -94,17 +96,15 @@
         <div class="menu-btns row"><button class="btn" id="nameBack">뒤로</button><button class="btn gold" id="nameGo">모험 시작 <span class="kbd">Enter</span></button></div></div>
     </div>
     <div id="confirm" class="ov modal" hidden>
-      <div class="modal-panel"><h2>모든 데이터가 초기화됩니다</h2><p class="modal-note" id="confMsg"></p>
+      <div class="modal-panel"><h2 id="confTitle">모든 데이터가 초기화됩니다</h2><p class="modal-note" id="confMsg"></p>
         <div class="menu-btns row"><button class="btn" id="confNo">취소</button><button class="btn danger" id="confYes">초기화하고 시작</button></div></div>
     </div>
     <div id="about" class="ov modal" hidden>
-      <div class="modal-panel wide"><p class="eyebrow">제작자</p><h2>천하상단: 사라진 교역 지도</h2>
+      <div class="modal-panel"><h2>천하상단: 사라진 교역 지도</h2>
         <dl class="about">
           <dt>제작</dt><dd>동부산역사교사모임 노재훈T</dd>
-          <dt>구성</dt><dd>제1부 송나라 편 · 제2부 원나라 편 · 제3부 천하상단의 마지막 장부(총복습)</dd>
-          <dt>글꼴</dt><dd>Song Myung, Gowun Dodum (Google Fonts)</dd>
+          <dt>구성</dt><dd>제1부 송나라 편<br>제2부 원나라 편<br>제3부 천하상단의 마지막 장부</dd>
         </dl>
-        <p class="modal-note">게임 속 상인 · 관리 · 군인 등 인물과 미션, 먹물 그림자는 이야기를 위해 만든 창작입니다. 조광윤, 왕안석, 칭기즈 칸, 쿠빌라이 칸, 마르코 폴로, 곽수경 등 역사 인물과 기록 카드의 ‘역사 노트’, 퀴즈 해설은 교과서의 역사적 사실을 따릅니다.</p>
         <div class="menu-btns row"><button class="btn gold" id="aboutX">닫기</button></div></div>
     </div>
     <div id="quit" class="ov modal" hidden>
@@ -121,5 +121,7 @@
 <script src="js/data_review.js"></script>
 <script src="js/art.js"></script>
 <script src="js/minigames.js"></script>
+<script src="js/ui_art.js"></script>
 <script src="js/game.js"></script>
 <script src="js/rpg.js"></script>
+<script src="js/mobile.js"></script>

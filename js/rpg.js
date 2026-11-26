@@ -11,7 +11,7 @@
 
   const WPN = {
     brush: { n: '붓', range: 30, dmg: 1, cd: 0.32, sk: { id: 'brush', n: '묵향 회오리', cd: 6, d: '붓을 크게 휘둘러 주위의 먹물 그림자를 모두 밀쳐 낸다 (주변 전체 공격)' } },
-    bow: { n: '활', range: 170, dmg: 0.5, cd: 0.4, sk: { id: 'bow', n: '화살비', cd: 6, d: '앞쪽으로 화살 다섯 대를 부채꼴로 한꺼번에 쏜다' } },
+    bow: { n: '활', range: 170, dmg: 0.5, cd: 0.4, sk: { id: 'bow', n: '화살비', cd: 7, d: '앞쪽으로 화살 다섯 대를 부채꼴로 한꺼번에 쏜다' } },
     sword: { n: '검', range: 30, dmg: 2, cd: 0.34, sk: { id: 'sword', n: '질풍 베기', cd: 7, d: '앞으로 순식간에 돌진하며 길 위의 적을 모두 벤다 (돌진 중 무적)' } },
     spear: { n: '창', range: 44, dmg: 1, cd: 0.34, sk: { id: 'spear', n: '용 찌르기', cd: 6, d: '창을 길게 내질러 일직선 위의 적을 모두 꿰뚫는다' } },
   };
@@ -30,43 +30,53 @@
      · 비법 시험 : 문제 세 개를 모두 맞히면 무기 스킬 (틀리면 언제든 다시 도전)
      메인 스토리 대화를 한 번 마친 뒤에만 나오고, 이야기 진행에는 영향을 주지 않는다 */
   const Q = (q, a, w, x) => ({ q, a, w, x });
-  // [말하는 사람, 앞 대화에서 이어지는 한마디, 질문, 정답, 오답들, 정답 뒤 한마디]
-  const SQ = (spk, lead, q, a, w, x) => [spk, { lead, q, a, w, x }];
+  /* 말투 : 조연이 원래 쓰던 말투 그대로 문제를 내고 반응한다
+     ban 반말 · hao 하오체 · hage 하게체 · hae 해요체 */
+  const jong = w => { const c = String(w).trim().slice(-1).charCodeAt(0); return c >= 0xac00 && c <= 0xd7a3 ? (c - 0xac00) % 28 > 0 : /[0-9]$/.test(w) ? !/[2459]$/.test(w) : false; };
+  const TONE = {
+    ban: { ok: '맞았어!', retry: '땡! 다시 골라 봐.', ans: a => `정답은 ${a}${jong(a) ? '이' : ''}야.`, three: n => `문제는 세 개야. 다 맞히면 **${n}**!`, fail: '틀렸어! 공부하고 다시 와.', win: n => `세 문제 다 맞혔네! 약속대로 「${n}」 알려 줄게.` },
+    hao: { ok: '옳소!', retry: '아니오. 다시 골라 보시오.', ans: a => `정답은 ${a}${jong(a) ? '이' : ''}라오.`, three: n => `문제는 세 개요. 모두 맞히면 **${n}**!`, fail: '틀렸소! 공부하고 다시 도전하시오.', win: n => `세 문제 모두 맞혔구려! 약속대로 「${n}」를 알려 드리리다.` },
+    hage: { ok: '옳거니!', retry: '아닐세. 다시 골라 보게.', ans: a => `정답은 ${a}일세.`, three: n => `문제는 세 개일세. 모두 맞히면 **${n}**!`, fail: '틀렸네! 공부하고 다시 오게.', win: n => `세 문제를 모두 맞혔구먼! 약속대로 「${n}」를 알려 주지.` },
+    hae: { ok: '맞아요!', retry: '아니에요. 다시 골라 보세요.', ans: a => `정답은 ${a}${jong(a) ? '이에요' : '예요'}.`, three: n => `문제는 세 개예요. 다 맞히면 **${n}**!`, fail: '틀렸어요! 공부하고 다시 오세요.', win: n => `세 문제 다 맞혔네요! 약속대로 「${n}」 알려 드릴게요.` },
+  };
+  // [말하는 사람, 말투, 앞 대화에 이어지는 한마디, 질문, 정답, 오답들, 정답 뒤 한마디]
+  const SQ = (spk, tone, lead, q, a, w, x) => [spk, { tone, lead, q, a, w, x }];
   const SIDE_QUIZ = {
-    'kf_street.kid1': SQ('kid1', '그럼 똑똑한지 시험해 볼래요? 맞히면 내 엿값 줄게요!', '송나라를 세운 사람은 누구게요?', '조광윤', ['왕안석', '칭기즈 칸'], '헤헤, 진짜 똑똑하네!'),
-    'kf_exam.ma': SQ('ma', '...괜찮소. 미안하면 공부나 좀 도와주시오. 맞히면 노잣돈을 드리리다.', '황제가 직접 치르는 마지막 시험은?', '전시', ['해시', '성시'], '그렇지! 해시, 성시, 그리고 전시!'),
-    'border_late.oldm': SQ('oldm', '장사하는 젊은이들이면 하나 물어보세. 맞히면 남은 노잣돈을 좀 나눠 주지.', '우리를 여기까지 밀어낸 여진족의 나라를 아는가?', '금', ['요', '원'], '그래, 금나라라네...'),
-    'kf_office.peti': SQ('peti', '젊은이들, 관청 사정 좀 아오? 하나만 물읍시다. 알려 주면 사례하리다.', '그 새 법을 반대하는 관리들은 뭐라고 부르오?', '보수파', ['개혁파', '절도사'], '보수파라... 높은 분들 싸움이구먼.'),
-    'kf_market.boat': SQ('boat', '배 타려면 뱃삯부터 알아야지! 이거 맞히면 오히려 내가 삯을 쳐 주리다.', '뱃삯으로도 받는 송나라의 종이 돈은?', '교자', ['교초', '세폐'], '교자! 무거운 동전 대신이지.'),
-    'kf_market.kid2': SQ('kid2', '나 퀴즈도 낼 수 있다! 맞히면 엽전 줄게!', '그 공연을 하는 무대 이름이 뭐게?', '구란', ['서원', '역참'], '맞아, 구란! 난간 두른 무대!'),
-    'kf_workshop.kwak': SQ('kwak', '허허, 아가씨 말이 맞소. 그럼 하나 맞혀 보시오. 맞히면 품삯을 드리지.', '필승이 진흙으로 하나씩 만든 글자 조각을 뭐라 하오?', '활자', ['교자', '나침반'], '활자! 그걸 조합하는 게 활판 인쇄술이오.'),
-    'port.kim': SQ('kim', '허허, 잘 아는구려. 그럼 이것도 아시오? 맞히면 인삼 값을 쳐 드리지.', '배가 이 항구를 드나들려면 어느 관청의 허락을 받아야 하오?', '시박사', ['역참', '군기감'], '시박사 허락 없인 배가 못 뜨지요.'),
-    'linan.kid3': SQ('kid3', '누나, 형! 연 받았으니까 내 문제 하나 풀어 줘요. 맞히면 내 용돈 줄게요!', '금나라에 밀려 남쪽으로 내려온 송을 뭐라고 불러요?', '남송', ['북송', '후송'], '맞아요! 여기 임안이 남송의 수도예요.'),
-    'y_steppe.elder': SQ('melder', '허허, 기록을 아끼는 젊은이들이로군. 하나만 물어보세. 맞히면 여비를 주지.', '부족을 하나로 모은 테무친은 훗날 어떤 칭호로 불리게 될까?', '칭기즈 칸', ['쿠빌라이 칸', '조광윤'], '칭기즈 칸... 좋은 이름이로군.'),
-    'y_camp.herd': SQ('herd', '헤헤, 수상해~ 그럼 이거 맞히면 믿어 줄게요! 엽전도 줄게요.', '칸의 자손들이 각자 다스리는 땅과 사람을 뭐라고 해요?', '울루스', ['와자', '역참'], '울루스! 우리 아버지가 그랬어요.'),
-    'y_dadu.hasa': SQ('hasa', '...아, 가기 전에 하나만. 시험 준비 삼아 묻겠소. 맞히면 사례하리다.', '이 나라의 수도, 이 성의 이름은?', '대도', ['임안', '카이펑'], '대도, 훗날 베이징이라 불릴 곳이오.'),
-    'y_office.ali': SQ('ali', '그 전에 셈 빠른 사람인지 하나 봅시다. 맞히면 수고비를 드리지.', '우리처럼 서역에서 와 재정을 맡은 사람들을 뭐라 부르오?', '색목인', ['남인', '한인'], '색목인! 여러 지역에서 온 사람들이란 뜻이오.'),
-    'y_market.cotton': SQ('cotton', '이 면포를 사려면 돈부터 아셔야죠. 맞히면 덤을 얹어 드리지요.', '원나라에서 쓰는 지폐 이름은?', '교초', ['교자', '세폐'], '교초! 교자는 송나라 돈이고요.'),
-    'y_market.music': SQ('music', '띵~ 귀가 밝구먼! 그럼 이것도 맞혀 보게. 맞히면 공연 수고비를 나눠 주지.', '노래와 연극이 어우러진 이 공연의 이름은?', '잡극', ['탈춤', '가부키'], '잡극이지! 반주는 내 몫이고.'),
-    'y_hangzhou.port': SQ('yport', '바닷길 이야기가 나왔으니 하나 묻겠소. 맞히면 통행세를 돌려 드리지.', '원나라도 큰 항구마다 두어 무역을 관리한 관청은?', '시박사', ['역참', '대운하'], '송나라 때처럼 시박사가 맡는다오.'),
-    'y_city.astro': SQ('astro', '허허, 기술이 오가듯 하늘의 지식도 오갔지. 문제 하나 내리다. 맞히면 사례하겠소.', '곽수경 공께서 만드신 달력의 이름은?', '수시력', ['태음력', '그레고리력'], '수시력이오. 이슬람 천문학도 큰 도움이 되었지.'),
-    'y_final.oldw': SQ('oldw', '젊은이들이 똑똑하구먼. 이 늙은이 물음에도 답해 보게. 맞히면 쌈짓돈을 주지.', '요즘 붉은 두건을 두르고 들고일어난 무리를 뭐라 부르던가?', '홍건적', ['황건적', '여진족'], '홍건적... 세상이 뒤숭숭하구먼.'),
-  };  const SIDE_SKILL = {
-    'border.look': { spk: 'look', sk: 'bow', intro: '그래도 먹물 그림자가 나오면 싸워야겠지. 국경 이야기를 맞히면 내 활 비법을 알려 주마.', qs: [
+    'kf_street.kid1': SQ('kid1', 'ban', '그럼 똑똑한지 시험해 볼래? 맞히면 내 엿값 줄게!', '송나라를 세운 사람은 누구게?', '조광윤', ['왕안석', '칭기즈 칸'], '헤헤, 진짜 똑똑하네!'),
+    'kf_exam.ma': SQ('ma', 'hao', '...괜찮소. 미안하면 공부나 좀 도와주시오. 맞히면 노잣돈을 드리리다.', '황제가 직접 치르는 마지막 시험은 무엇이오?', '전시', ['해시', '성시'], '해시, 성시, 그리고 전시! 이제 외웠소.'),
+    'border_late.oldm': SQ('oldm', 'hage', '장사하는 젊은이들이면 하나 물어보세. 맞히면 남은 노잣돈을 좀 나눠 주지.', '우리를 여기까지 밀어낸 여진족의 나라를 아는가?', '금', ['요', '원'], '그래, 금나라라네...'),
+    'kf_office.peti': SQ('peti', 'hao', '젊은이들, 관청 사정 좀 아오? 하나만 물읍시다. 알려 주면 사례하리다.', '그 새 법을 반대하는 관리들은 뭐라고 부르오?', '보수파', ['개혁파', '절도사'], '보수파라... 높은 분들 싸움이구려.'),
+    'kf_market.boat': SQ('boat', 'hao', '배 타려면 뱃삯부터 알아야지! 이거 맞히면 오히려 내가 삯을 쳐 주리다.', '뱃삯으로도 받는 송나라의 종이 돈은 무엇이오?', '교자', ['교초', '세폐'], '무거운 동전 대신 쓰는 돈이오.'),
+    'kf_market.kid2': SQ('kid2', 'ban', '나 퀴즈도 낼 수 있다! 맞히면 엽전 줄게!', '그 공연을 하는 무대 이름이 뭐게?', '구란', ['서원', '역참'], '구란! 난간을 두른 무대야!'),
+    'kf_workshop.kwak': SQ('kwak', 'hao', '허허, 아가씨 말이 맞소. 그럼 하나 맞혀 보시오. 맞히면 품삯을 드리리다.', '필승이 진흙으로 하나씩 만든 글자 조각을 뭐라 하오?', '활자', ['교자', '나침반'], '그걸 조합하는 게 바로 활판 인쇄술이오.'),
+    'port.kim': SQ('kim', 'hao', '허허, 잘 아는구려. 그럼 이것도 아시오? 맞히면 인삼 값을 쳐 드리리다.', '배가 이 항구를 드나들려면 어느 관청의 허락을 받아야 하오?', '시박사', ['역참', '군기감'], '시박사 허락 없인 배가 못 뜬다오.'),
+    'linan.kid3': SQ('kid3', 'ban', '형아, 누나! 연 받았으니까 내 문제 하나 풀어 줘. 맞히면 내 용돈 줄게!', '금나라에 밀려 남쪽으로 내려온 송을 뭐라고 해?', '남송', ['북송', '후송'], '여기 임안이 남송의 수도야.'),
+    'y_steppe.elder': SQ('melder', 'hage', '허허, 기록을 아끼는 젊은이들이로군. 하나만 물어보세. 맞히면 여비를 주지.', '부족을 하나로 모은 테무친은 훗날 어떤 칭호로 불리게 되겠나?', '칭기즈 칸', ['쿠빌라이 칸', '조광윤'], '칭기즈 칸... 좋은 이름이로군.'),
+    'y_camp.herd': SQ('herd', 'ban', '헤헤, 수상해~ 그럼 이거 맞히면 믿어 줄게! 엽전도 줄게.', '칸의 자손들이 각자 다스리는 땅과 사람을 뭐라고 해?', '울루스', ['와자', '역참'], '울루스! 우리 아버지가 그랬어.'),
+    'y_dadu.hasa': SQ('hasa', 'hao', '...아, 가기 전에 하나만. 시험 준비 삼아 묻겠소. 맞히면 사례하리다.', '이 나라의 수도, 이 성의 이름은 무엇이오?', '대도', ['임안', '카이펑'], '훗날 베이징이라 불릴 곳이오.'),
+    'y_office.ali': SQ('ali', 'hao', '그 전에 셈 빠른 사람인지 하나 봅시다. 맞히면 수고비를 드리리다.', '우리처럼 서역에서 와 재정을 맡은 사람들을 뭐라 부르오?', '색목인', ['남인', '한인'], '여러 지역에서 온 사람들이란 뜻이오.'),
+    'y_market.cotton': SQ('cotton', 'hae', '이 면포를 사려면 돈부터 아셔야죠. 맞히면 덤을 얹어 드릴게요.', '원나라에서 쓰는 지폐 이름은 뭘까요?', '교초', ['교자', '세폐'], '교자는 송나라 돈이고요.'),
+    'y_market.music': SQ('music', 'hage', '띵~ 귀가 밝구먼! 그럼 이것도 맞혀 보게. 맞히면 공연 수고비를 나눠 주지.', '노래와 연극이 어우러진 이 공연의 이름은 무엇인가?', '잡극', ['탈춤', '가부키'], '반주는 내 몫이고, 허허.'),
+    'y_hangzhou.port': SQ('yport', 'hao', '바닷길 이야기가 나왔으니 하나 묻겠소. 맞히면 통행세를 돌려 드리리다.', '원나라도 큰 항구마다 두어 무역을 관리한 관청은 무엇이오?', '시박사', ['역참', '대운하'], '송나라 때처럼 시박사가 맡는다오.'),
+    'y_city.astro': SQ('astro', 'hao', '허허, 기술이 오가듯 하늘의 지식도 오갔지. 문제 하나 내리다. 맞히면 사례하겠소.', '곽수경 공께서 만드신 달력의 이름은 무엇이오?', '수시력', ['태음력', '그레고리력'], '이슬람 천문학도 큰 도움이 되었지.'),
+    'y_final.oldw': SQ('oldw', 'hage', '젊은이들이 똑똑하구먼. 이 늙은이 물음에도 답해 보게. 맞히면 쌈짓돈을 주지.', '요즘 붉은 두건을 두르고 들고일어난 무리를 뭐라 부르던가?', '홍건적', ['황건적', '여진족'], '세상이 뒤숭숭하구먼.'),
+  };
+  const SIDE_SKILL = {
+    'border.look': { spk: 'look', tone: 'ban', sk: 'bow', intro: '그래도 먹물 그림자가 나오면 싸워야겠지. 국경 이야기를 맞히면 내 활 비법을 알려 주마.', qs: [
       Q('송과 대립한 거란족의 나라는?', '요', ['금', '원']), Q('송이 평화를 위해 요에 보낸 비단과 은은?', '세폐', ['교자', '조공미']), Q('거란이 차지한 산 너머 땅은?', '연운 16주', ['강남', '취안저우'])] },
-    'kf_market.hong': { spk: 'hong', sk: 'sword', intro: '호호, 배짱이라면 제 검무도 지지 않아요. 와자 이야기를 맞히면 검무 비법을 알려 드릴게요.', qs: [
+    'kf_market.hong': { spk: 'hong', tone: 'ban', sk: 'sword', intro: '호호, 배짱이라면 내 검무도 지지 않아. 와자 이야기를 맞히면 검무 비법을 알려 줄게.', qs: [
       Q('송나라 도시의 오락 거리는?', '와자', ['역참', '서원']), Q('와자 안의 전문 공연장은?', '구란', ['군기감', '시박사']), Q('와자가 번성한 까닭은?', '서민의 생활 수준이 높아져서', ['귀족만 즐겨서', '전쟁이 많아서'])] },
-    'port.sailor': { spk: 'sailor', sk: 'spear', intro: '바다에선 바람만큼 작살 솜씨도 중요하지. 바다 이야기를 맞히면 내 작살 비법을 알려 주마.', qs: [
+    'port.sailor': { spk: 'sailor', tone: 'hage', sk: 'spear', intro: '바다에선 바람만큼 작살 솜씨도 중요하지. 바다 이야기를 맞히면 내 작살 비법을 알려 주겠네.', qs: [
       Q('흐린 날 바다에서 길을 알려 주는 송의 발명품은?', '나침반', ['화약', '활자']), Q('송에서 무역을 관리한 관청은?', '시박사', ['역참', '군기감']), Q('송 때 동아시아와 인도양을 잇던 교역권은?', '동아시아·인도양 교역권', ['초원길 교역권', '지중해 교역권'])] },
-    'kf_workshop.lim': { spk: 'lim', sk: 'brush', intro: '기분 좋은 김에, 학문 이야기를 맞히면 붓으로 먹을 휘감는 묘법을 알려 드리리다.', qs: [
+    'kf_workshop.lim': { spk: 'lim', tone: 'hao', sk: 'brush', intro: '기분 좋은 김에, 학문 이야기를 맞히면 붓으로 먹을 휘감는 묘법을 알려 드리리다.', qs: [
       Q('남송의 주희가 집대성한 학문은?', '성리학', ['실학', '불교']), Q('송나라 때 학문과 교육을 하던 곳은?', '서원', ['구란', '역참']), Q('성리학이 훗날 된 것은?', '동아시아 여러 나라의 통치 이념', ['상인의 장부 규칙', '군대의 훈련법'])] },
-    'y_steppe.herd': { spk: 'herd', sk: 'bow', intro: '맞아요! 그 활 솜씨, 문제 맞히면 나도 알려 줄게요!', qs: [
+    'y_steppe.herd': { spk: 'herd', tone: 'ban', sk: 'bow', intro: '맞아! 그 활 솜씨, 문제 맞히면 나도 알려 줄게!', qs: [
       Q('몽골 부족을 통일한 사람의 원래 이름은?', '테무친', ['쿠빌라이', '바투']), Q('칭기즈 칸으로 추대된 해는?', '1206년', ['1271년', '1368년']), Q('몽골군이 강했던 까닭은?', '강력한 기마병', ['거대한 함대', '화약 무기'])] },
-    'y_camp.envoy': { spk: 'envoy', sk: 'sword', intro: '이 끈처럼 내 검도 바람처럼 휘지요. 제국 이야기를 맞히면 그 검술을 알려 드리리다.', qs: [
+    'y_camp.envoy': { spk: 'envoy', tone: 'hao', sk: 'sword', intro: '이 끈처럼 내 검도 바람처럼 부드럽게 휘오. 제국 이야기를 맞히면 그 검술을 알려 드리리다.', qs: [
       Q('칸의 자손들이 각자 다스린 땅은?', '울루스', ['와자', '서원']), Q('몽골 제국은 어떤 형태로 유지되었나?', '느슨한 연합', ['하나의 중앙 집권 국가', '도시 국가 동맹']), Q('울루스를 다스린 사람들은?', '칭기즈 칸의 자손들', ['송의 황족', '이슬람 상인'])] },
-    'y_market.book': { spk: 'bookm', sk: 'brush', intro: '그 이야기들, 다 붓끝에서 나온다오. 시장 이야기를 맞히면 내 붓놀림 비법을 알려 드리지.', qs: [
+    'y_market.book': { spk: 'bookm', tone: 'hao', sk: 'brush', intro: '그 이야기들, 다 붓끝에서 나온다오. 시장 이야기를 맞히면 내 붓놀림 비법을 알려 드리리다.', qs: [
       Q('원나라에서 널리 쓰인 지폐는?', '교초', ['교자', '세폐']), Q('원나라 때 생산이 늘어 면직물이 발달한 작물은?', '목화', ['차', '사탕수수']), Q('원나라에서 크게 유행한 공연은?', '잡극', ['탈춤', '판소리'])] },
-    'y_city.monk': { spk: 'monk', sk: 'spear', intro: '여러 사람이 모이니 지혜도 모이지요. 이 거리 이야기를 맞히면 제 봉술 비법을 알려 드리리다.', qs: [
+    'y_city.monk': { spk: 'monk', tone: 'hao', sk: 'spear', intro: '여러 사람이 모이니 지혜도 모이는 법이오. 이 거리 이야기를 맞히면 내 봉술 비법을 알려 드리리다.', qs: [
       Q('『동방견문록』을 남긴 사람은?', '마르코 폴로', ['이븐 바투타', '곽수경']), Q('원나라에 전해진 종교가 아닌 것은?', '성리학', ['이슬람교', '크리스트교']), Q('14세기에 중국을 찾은 이슬람 여행가는?', '이븐 바투타', ['마르코 폴로', '칭기즈 칸'])] },
   };
   const PAY = { rec: 5, quiz: 5, mg: 5 };
@@ -76,26 +86,26 @@
     const k = sideKey(aid, e.id);
     const sq = SIDE_QUIZ[k];
     if (sq && !has('bq_' + k)) {
-      const [spk, q] = sq;
+      const [spk, q] = sq, T = TONE[q.tone];
       const ask = (opts, pay) => ({ choice: shuffle(opts).map(o => ({ t: o, s: [['me', o], ...(o === q.a
-        ? [[spk, `맞아요! ${q.x}`], { flag: 'bq_' + k }, { money: pay, why: '' }]
-        : opts.length > 2 ? [[spk, '아니에요. 다시 골라 봐요.'], ask(opts.filter(x => x !== o), Math.max(5, Math.round(pay / 2)))]
-        : [[spk, `정답은 ${q.a}! ${q.x}`], { flag: 'bq_' + k }])] })) });
+        ? [[spk, `${T.ok} ${q.x}`], { flag: 'bq_' + k }, { money: pay, why: '' }]
+        : opts.length > 2 ? [[spk, T.retry], ask(opts.filter(x => x !== o), Math.max(5, Math.round(pay / 2)))]
+        : [[spk, `${T.ans(q.a)} ${q.x}`], { flag: 'bq_' + k }])] })) });
       return [[spk, q.lead], [spk, q.q], ask([q.a, ...q.w], 20)];
-    }    const ss = SIDE_SKILL[k];
+    }
+    const ss = SIDE_SKILL[k];
     if (ss && !has('sk_' + k)) {
-      const w = WPN[ss.sk];
+      const w = WPN[ss.sk], T = TONE[ss.tone];
       const ask = i => {
-        if (i >= ss.qs.length) return [[ss.spk, `세 문제 모두 맞혔구려! 약속대로 비법 「${w.sk.n}」을 알려 드리지.`], { flag: 'sk_' + k }, { skill: ss.sk }];
+        if (i >= ss.qs.length) return [[ss.spk, T.win(w.sk.n)], { flag: 'sk_' + k }, { skill: ss.sk }];
         const q = ss.qs[i];
-        return [[ss.spk, `${i + 1}번째 문제. ${q.q}`], { choice: shuffle([q.a, ...q.w]).map(o => ({ t: o, s: [['me', o], ...(o === q.a ? ask(i + 1) : [[ss.spk, '틀렸소! 공부하고 다시 도전하시오. 언제든 기다리겠소.']])] })) }];
+        return [[ss.spk, `${i + 1}번째 문제. ${q.q}`], { choice: shuffle([q.a, ...q.w]).map(o => ({ t: o, s: [['me', o], ...(o === q.a ? ask(i + 1) : [[ss.spk, T.fail]])] })) }];
       };
-      return [[ss.spk, ss.intro], [ss.spk, `문제는 세 개. 모두 맞히면 **${w.sk.n}**!`],
+      return [[ss.spk, ss.intro], [ss.spk, T.three(w.sk.n)],
         { choice: [{ t: '도전할게요!', s: [['me', '도전할게요!'], ...ask(0)] }, { t: '다음에 할게요.', s: [['me', '다음에 할게요.']] }] }];
     }
     return null;
-  }
-  // 메인 대화를 한 번 마친 조연에게만 붙인다 (대화 키가 이미 본 것 · _r · 배열)
+  }  // 메인 대화를 한 번 마친 조연에게만 붙인다 (대화 키가 이미 본 것 · _r · 배열)
   const mainDone = tk => typeof tk === 'string' ? !!((S.seen && S.seen[tk]) || /_r$/.test(tk)) : Array.isArray(tk);
   function hookSide() {
     for (const k of new Set([...Object.keys(SIDE_QUIZ), ...Object.keys(SIDE_SKILL)])) {
@@ -161,34 +171,36 @@
     shopCtx = { next }; G.overlay = 'shop'; G.keys = {}; shopEl.hidden = false; SND.play('open'); renderShop();
   }
   window.openShop = openShop;
-  const skNote = id => `스킬: ${WPN[id].sk.n}${R.skills[id] ? ' (배움)' : ' (이야기 속 인물에게 배울 수 있음)'}`;
+  // 상점 : 카드 다섯 장 (탕약 · 붓 · 활 · 창 · 검). 돈이 모자라면 버튼이 돌처럼 굳는다
+  const SHORT = { potion: '체력 +1', brush: '기본 무기', bow: '멀리 쏜다 · 약함', spear: '조금 멀리 · 보통', sword: '가까이 · 강함' };
   function renderShop(msg) {
-    const rows = SHOP_ITEMS.map((it, i) => {
-      const owned = it.id !== 'potion' && R.owned[it.id];
-      const btn = it.id === 'potion' || !owned ? `<button class="btn gold" data-i="${i}">사기 · ${it.price}냥 <span class="kbd">${i + 1}</span></button>`
-        : R.wpn === it.id ? '<span class="sh-on">장착 중</span>' : `<button class="btn" data-i="${i}">장착하기 <span class="kbd">${i + 1}</span></button>`;
-      return `<li><i class="sh-ic ic-${it.id}"></i><div><b>${it.t}</b><small>${it.d}</small><em>${it.id === 'potion' ? `가진 탕약 ${R.potions}첩` : skNote(it.id)}</em></div>${btn}</li>`;
-    });
-    const brush = `<li><i class="sh-ic ic-brush"></i><div><b>붓 (기본 무기)</b><small>사거리·공격력 보통 · 먹물탄을 튕겨 낼 수 있다</small><em>${skNote('brush')}</em></div>${R.wpn === 'brush' ? '<span class="sh-on">장착 중</span>' : '<button class="btn" data-i="b">장착하기 <span class="kbd">0</span></button>'}</li>`;
-    shopEl.innerHTML = `<div class="shop-panel" role="dialog" aria-label="상점"><header><canvas class="sh-pt" width="26" height="26" data-look="ha"></canvas><canvas class="sh-pt" width="26" height="26" data-look="wi"></canvas>
-      <div><p class="eyebrow">약초 상인 · 무기 상인</p><h2>천하 상점</h2></div><p class="sh-money">가진 돈 <b>${R.money}냥</b></p></header>
-      <p class="sh-sec">약초</p><ul class="sh-list">${rows[0]}</ul>
-      <p class="sh-sec">무기</p><ul class="sh-list">${brush}${rows.slice(1).join('')}</ul>
-      <p class="sh-msg">${msg || '&nbsp;'}</p><button class="btn" id="shopX">나가기 <span class="kbd">Esc</span></button></div>`;
+    const card = (id, name, price, i) => {
+      const isW = id !== 'potion', owned = isW && R.owned[id], on = isW && R.wpn === id;
+      let btn;
+      if (on) btn = '<span class="sb on">장착 중</span>';
+      else if (owned) btn = `<button class="sb eq" data-i="${i}">장착</button>`;
+      else if (R.money < price) btn = `<button class="sb stone" data-i="${i}" aria-disabled="true">${price}냥</button>`;
+      else btn = `<button class="sb buy" data-i="${i}">${price}냥</button>`;
+      const sk = isW ? `<i class="sc-sk sk-ic sk-${id} ${R.skills[id] ? '' : 'lock'}" title="${WPN[id].sk.n}"></i>` : `<span class="sc-cnt">×${R.potions}</span>`;
+      return `<li class="sc ${on ? 'cur' : ''}"><i class="sh-ic ic-${id}"></i>${sk}<b>${name}</b><small>${SHORT[id]}</small>${btn}</li>`;
+    };
+    shopEl.innerHTML = `<div class="shop-panel v2" role="dialog" aria-label="상점">
+      <header><canvas class="sh-pt" width="26" height="26" data-look="ha"></canvas><canvas class="sh-pt" width="26" height="26" data-look="wi"></canvas><h2>상점</h2><p class="sh-money"><i class="rh-coin"></i>${R.money}냥</p><button class="sh-x" id="shopX" aria-label="닫기">✕</button></header>
+      <ul class="sh-cards">${card('potion', '약초 탕약', SHOP_ITEMS[0].price, 0)}${card('brush', '붓', 0, 'b')}${SHOP_ITEMS.slice(1).map((it, k) => card(it.id, it.t, it.price, k + 1)).join('')}</ul>
+      <p class="sh-msg">${msg || ''}</p></div>`;
     shopEl.querySelectorAll('canvas[data-look]').forEach(cv => { const x = cv.getContext('2d'); x.imageSmoothingEnabled = false; ART.portrait(x, cv.dataset.look); });
     shopEl.querySelectorAll('[data-i]').forEach(b => b.onclick = () => buy(b.dataset.i));
     $('shopX').onclick = closeShop;
-  }
-  function buy(i) {
-    if (i === 'b') { R.wpn = 'brush'; saveR(); SND.play('tick'); syncHud(true); return renderShop('붓을 들었다.'); }
+  }  function buy(i) {
+    if (i === 'b') { R.wpn = 'brush'; saveR(); SND.play('tick'); syncHud(true); return renderShop('붓 장착'); }
     const it = SHOP_ITEMS[+i]; if (!it) return;
-    if (it.id !== 'potion' && R.owned[it.id]) { R.wpn = it.id; saveR(); SND.play('tick'); syncHud(true); return renderShop(`${it.t}을 들었다.`); }
-    if (R.money < it.price) { SND.play('bad'); return renderShop(`돈이 모자라요! (${it.price - R.money}냥 더 필요) 이야기를 진행하며 퀴즈와 미션을 해내고, 먹물 그림자를 물리치면 돈이 모여요.`); }
-    if (it.id === 'potion' && R.potions >= 9) { SND.play('bad'); return renderShop('탕약은 9첩까지만 들고 다닐 수 있어요.'); }
+    if (it.id !== 'potion' && R.owned[it.id]) { R.wpn = it.id; saveR(); SND.play('tick'); syncHud(true); return renderShop(`${it.t} 장착`); }
+    if (R.money < it.price) { SND.play('bad'); return renderShop(`${it.price - R.money}냥 모자라요`); }
+    if (it.id === 'potion' && R.potions >= 9) { SND.play('bad'); return renderShop('탕약은 9개까지'); }
     R.money -= it.price;
-    if (it.id === 'potion') { R.potions++; SND.play('good'); saveR(); syncHud(true); return renderShop('약초 탕약을 샀다! 필드에서 C 키로 마시면 체력이 1 회복된다.'); }
+    if (it.id === 'potion') { R.potions++; SND.play('good'); saveR(); syncHud(true); return renderShop('탕약 +1'); }
     R.owned[it.id] = 1; R.wpn = it.id; saveR(); SND.play('win'); syncHud(true);
-    renderShop(`${it.t}을 사서 바로 장착했다! 필드에서 Q 키로 무기를 바꿀 수 있다.`);
+    renderShop(`${it.t} 장착`);
   }
   function closeShop() {
     if (!shopCtx) return; const n = shopCtx.next; shopCtx = null;
@@ -280,7 +292,7 @@
     }
     for (const s of G.shots) if (s.x >= x0 - 4 && s.x <= x1 + 4 && Math.abs(s.y - P.y) < 18) s.life = 0;
   }
-  function fireArrow(vyk, dmg) { const P = G.P; G.arrows.push({ x: P.x + P.face * 8, y: P.y - 12, vx: P.face * 260, vy: vyk * 260, life: 170 / 260, dmg, dir: P.face }); }
+  function fireArrow(vyk, dmg, vol) { const P = G.P; G.arrows.push({ x: P.x + P.face * 8, y: P.y - 12, vx: P.face * 260, vy: vyk * 260, life: 170 / 260, dmg, dir: P.face, vol }); }
   attack = function () {
     if (G.atkCd > 0) return;
     const w = WPN[R.wpn] || WPN.brush;
@@ -302,7 +314,7 @@
       G.shots = G.shots.filter(s => Math.hypot(s.x - P.x, (s.y - P.y) * 1.6) > 64);
       G.rpgFx.push({ k: 'ring', t: 0, life: 0.45, x: P.x, y: P.y });
     } else if (id === 'bow') {
-      [-0.28, -0.14, 0, 0.14, 0.28].forEach(v => fireArrow(v, 1));
+      [-0.28, -0.14, 0, 0.14, 0.28].forEach(v => fireArrow(v, 0.6)); // 다섯 발 모두 맞으면 피해 3
       G.rpgFx.push({ k: 'bowpull', t: 0, life: 0.25 });
     } else if (id === 'sword') {
       G.sdash = { t: 0, dur: 0.2, dir: P.face, hit: new Set() }; G.inv = Math.max(G.inv, 0.35);
@@ -395,8 +407,8 @@
     const w = WPN[R.wpn] || WPN.brush, sk = w.sk, cd = Math.max(0, G.skCd[R.wpn] || 0);
     const st = !R.skills[R.wpn] ? 'off' : cd > 0 ? 'cd' : 'ok';
     // 스킬은 아이콘으로만 (잠김 · 쿨타임 · 준비 완료)
-    const skIcon = `<span class="rh-sk ${st}" title="${sk.n}${st === 'off' ? ' (아직 못 배움)' : ''}" style="--p:${st === 'cd' ? (cd / sk.cd * 360).toFixed(0) : 0}deg"><i class="sk-ic sk-${R.wpn}"></i>${st === 'cd' ? `<b>${Math.ceil(cd)}</b>` : ''}${st === 'off' ? '<i class="sk-lock"></i>' : ''}<span class="kbd">X</span></span>`;
-    const html = `<span class="rh-money"><i class="rh-coin"></i>${R.money}냥</span><span class="rh-pot" title="약초 탕약"><i class="sh-ic ic-potion"></i>${R.potions}<span class="kbd">C</span></span><span class="rh-wpn" title="무기 바꾸기"><i class="sh-ic ic-${R.wpn}"></i>${w.n}<span class="kbd">Q</span></span>${skIcon}`;
+    const skIcon = `<span class="rh-sk ${st}" title="${sk.n}${st === 'off' ? ' (아직 못 배움)' : ''}" style="--p:${st === 'cd' ? (cd / sk.cd * 360).toFixed(0) : 0}deg"><i class="sk-ic sk-${R.wpn}"></i>${st === 'cd' ? `<b>${Math.ceil(cd)}</b>` : ''}${st === 'off' ? '<i class="sk-lock"></i>' : ''}</span>`;
+    const html = `<span class="rh-money"><i class="rh-coin"></i>${R.money}냥</span><span class="rh-pot" title="약초 탕약"><i class="sh-ic ic-potion"></i>${R.potions}</span><span class="rh-wpn" title="무기 바꾸기"><i class="sh-ic ic-${R.wpn}"></i>${w.n}</span>${skIcon}`;
     if (force || html !== lastHud) { hud.innerHTML = html; lastHud = html; }
   }
   window.syncRpgHud = syncHud;

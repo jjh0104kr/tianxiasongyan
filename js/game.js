@@ -72,7 +72,7 @@ function loadSave(c) { try { const r = localStorage.getItem(SKEY(c)); return r ?
 function loadProg() { try { return JSON.parse(localStorage.getItem(PKEY)) || {}; } catch (e) { return {}; } }
 function saveProg(p) { try { localStorage.setItem(PKEY, JSON.stringify(p)); } catch (e) { } }
 function setFlag(k) { S.flags[k] = 1; save(); }
-const rankOf = s => s >= 90 ? 'S' : s >= 75 ? 'A' : s >= 55 ? 'B' : 'C';
+const rankOf = s => s >= 95 ? 'S' : s >= 85 ? 'A' : s >= 75 ? 'B' : s >= 65 ? 'C' : s >= 55 ? 'D' : s >= 45 ? 'E' : 'F';
 function scoreOf(st) { return clamp(100 - (st.penalty || 0), 0, 100); }
 
 /* ---------------- 지역 ---------------- */
@@ -118,21 +118,27 @@ function refreshEnts() {
 let RUN = null;
 function run(script, done) {
   if (!script) { console.warn('script missing'); return; }
-  G.mode = 'script'; G.target = null; G.keys = {}; G.dash = false; RUN = { done }; G.hist = []; G.histIdx = null;
+  G.mode = 'script'; G.target = null; G.keys = {}; G.dash = false; RUN = { done }; G.hist = []; G.histIdx = null; G.runId = (G.runId || 0) + 1;
   hidePrompt(); if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   seq(script, finish);
 }
 function finish() {
-  hideDialog(); $('choices').hidden = true; G.mode = 'play'; G.camFocus = null;
+  hideDialog(); $('choices').hidden = true; G.mode = 'play'; G.camFocus = null; G.npcTalk = false;
   const d = RUN && RUN.done; RUN = null; refreshEnts(); updateHud(); save(); d && d();
   setTimeout(maybeFocus, 200);
 }
-function terminal() { G.camFocus = null; hideDialog(); $('choices').hidden = true; RUN = null; G.mode = 'play'; save(); }
+function endTalk() {
+  if (!G.npcTalk || G.mode !== 'script' || G.overlay || Quiz.active || MG.active) return;
+  G.runId++; G.compassBusy = false; const cf = $('compassFx'); if (cf) cf.classList.remove('on', 'out');
+  terminal(); SND.play('tick');
+}
+function terminal() { G.camFocus = null; G.npcTalk = false; hideDialog(); $('choices').hidden = true; RUN = null; G.mode = 'play'; save(); }
 /* 【조작법】 같은 안내 문장은 대화창이 아니라 안내창 하나에 모아서 보여 준다 */
 const isGuide = c => Array.isArray(c) && c[0] === 'nar' && /^【/.test(c[1]);
 function seq(script, end) {
-  let i = 0;
+  let i = 0; const rid = G.runId;
   const next = () => {
+    if (rid !== G.runId) return;
     if (i >= script.length) return end();
     if (isGuide(script[i])) { const g = []; while (i < script.length && isGuide(script[i])) g.push(script[i++][1]); hideDialog(); return showGuide(g, next); }
     exec(script[i++], next);
@@ -446,6 +452,7 @@ function interact(e) {
   S.seen = S.seen || {};
   if (key && S.seen[key] && !/_r$|wait|lock/.test(key)) script = recapFor(key, e);
   run(script, key ? () => { S.seen[key] = 1; save(); } : null);
+  G.npcTalk = e.k === 'npc';
 }
 
 function recapFor(key, e) {
@@ -595,6 +602,7 @@ window.addEventListener('keydown', e => {
   if (G.mode === 'focus') { skipFocus(); return; }
   if (G.mode === 'script') {
     if (!$('choices').hidden) { const n = parseInt(e.key, 10); const bs = $('choices').querySelectorAll('.choice'); if (n >= 1 && n <= bs.length) bs[n - 1].click(); return; }
+    if (e.code === 'Escape') { endTalk(); return; }
     if (e.code === 'ArrowLeft') { histMove(-1); return; }
     if (e.code === 'ArrowRight') { if (!e.repeat) advance(); return; }
     if (ADV.includes(e.code)) { if (!e.repeat) advance(); return; }
@@ -1089,32 +1097,47 @@ function campDone() {
   saveProg(prog);
   showResult(score, rank, prog, allDone);
 }
-function rankSeal(r, big) { return `<span class="rank r${r} ${big ? 'big' : ''}">${r}</span>`; }
+function rankSeal(r, big, useImg) {
+  const u = useImg && UIART.rank[r]; // 랭크 도장 그림은 챕터 선택창에서만
+  return u ? `<img class="rank-img ${big ? 'big' : ''}" src="${u}" alt="${r} 랭크">` : `<span class="rank r${r} ${big ? 'big' : ''}">${r}</span>`;
+}
+/* 결과창 : 노을 진 강가 배경 위에 '챕터 클리어!' 현수막 · 랭크 · 점수 · 역사 기록 · 오답 · 걸린 시간 */
 function showResult(score, rank, prog, allDone) {
   const el = $('credits'), camp = C(); G.overlay = 'modal';
-  const i = CAMP_ORDER.indexOf(S.camp), next = CAMP_ORDER[i + 1];
-  const finalBlock = (S.camp === 'review' || allDone) ? `<div class="final-rank"><p class="eyebrow">최종 랭크</p><div class="fr-row">${CAMP_ORDER.map(c => `<div><span class="fr-t">${CAMPS[c].tag}</span>${prog[c] && prog[c].done ? rankSeal(prog[c].rank) : '<em>—</em>'}</div>`).join('')}
-      <div class="fr-final"><span class="fr-t">최종</span>${prog.final ? rankSeal(prog.final.rank, true) : '<em>—</em>'}</div></div></div>` : '';
-  el.innerHTML = `<div class="cred-panel"><h2 class="cred-big">${escH(camp.title)} 완료</h2>
-    <div class="res-main">${rankSeal(rank, true)}<div><p class="res-score">${score}<small>점</small></p></div></div>
-    <div class="cred-stats"><div><b>${S.recs.length}/${camp.recs.length}</b><span>기록</span></div><div><b>${S.wrongs || 0}</b><span>오답</span></div><div><b>${fmtTime(S.play)}</b><span>시간</span></div></div>
-    ${finalBlock}
-    <div class="menu-btns">${next ? `<button class="btn gold" id="resNext">${CAMPS[next].tag} ${CAMPS[next].title} 시작</button>` : ''}<button class="btn" id="resNote">역사 노트</button><button class="btn" id="resCamps">챕터 선택</button></div></div>`;
-  el.hidden = false; SND.play('win');
-  if (next) $('resNext').onclick = () => { el.hidden = true; G.overlay = null; startCamp(next, true); };
-  $('resNote').onclick = () => { el.hidden = true; G.overlay = null; openRecs(); G.afterRecs = true; };
-  $('resCamps').onclick = () => { el.hidden = true; G.overlay = null; toTitle(); openCamps(); };
+  const i = CAMP_ORDER.indexOf(S.camp), next = CAMP_ORDER[i + 1], U = UIART.res;
+  const img = (k, cls = '') => U[k] ? `<img class="rs-img ${cls}" src="${U[k].url}" alt="">` : '';
+  const isFinal = S.camp === 'review' || allDone;
+  const record = isFinal
+    ? `<div class="rs-final">${CAMP_ORDER.map(c => `<span><small>${CAMPS[c].tag}</small>${prog[c] && prog[c].done ? `<b class="rs-letter sm r${prog[c].rank}">${prog[c].rank}</b>` : '<em>—</em>'}</span>`).join('')}<span class="fin"><small>최종</small>${prog.final ? `<b class="rs-letter sm r${prog.final.rank}">${prog.final.rank}</b>` : '<em>—</em>'}</span></div>`
+    : `<b class="rs-rec">${S.recs.length} <i>/</i> ${camp.recs.length}</b>`;
+  el.innerHTML = `<div class="rs-wrap">
+    <div class="rs-banner">${img('banner')}<p class="rs-camp">${escH(camp.tag)} ${escH(camp.title)}</p></div>
+    <div class="rs-row"><div class="rs-box rs-rank">${img('rank')}<div class="rs-val"><span class="rs-letter r${rank}">${rank}</span></div></div>
+      <div class="rs-box">${img('score')}<div class="rs-val"><b class="rs-num" id="rsScore">0</b><small>점</small></div></div></div>
+    <div class="rs-box rs-wide">${img('record')}<div class="rs-val">${record}</div></div>
+    <div class="rs-row"><div class="rs-box">${img('wrong')}<div class="rs-val"><b class="rs-num">${S.wrongs || 0}</b><small>개</small></div></div>
+      <div class="rs-box">${img('time')}<div class="rs-val"><b class="rs-num sm">${fmtTime(S.play)}</b></div></div></div>
+    <div class="rs-row rs-btns">${next ? `<button class="rs-btn" id="resNext" aria-label="다음 챕터로">${img('next')}</button>` : ''}<button class="rs-btn" id="resCamps" aria-label="챕터 선택">${img('camps')}</button></div>
+  </div>`;
+  el.classList.add('result'); el.hidden = false; SND.play('win');
+  // 점수가 0부터 올라가고, 다 오르면 랭크 도장이 쾅
+  const sc = $('rsScore'), t0 = performance.now();
+  const tick = now => { const k = Math.min(1, (now - t0 - 900) / 900); if (!sc.isConnected) return; sc.textContent = Math.round(score * Math.max(0, k)); if (k < 1) requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+  setTimeout(() => { SND.play('rec'); G.shake = 0.2; }, 1900);
+  const close = () => { el.hidden = true; el.classList.remove('result'); el.innerHTML = ''; G.overlay = null; };
+  if (next) $('resNext').onclick = () => { close(); startCamp(next, true); };
+  $('resCamps').onclick = () => { close(); toTitle(); openCamps(); };
 }
-
 /* ---------------- 타이틀 · 챕터 선택 ---------------- */
 function toTitle(msg) {
   G.mode = 'title'; G.area = null; G.focus = null; G.zoom = 1; G.zk = 0; hideDialog(); hidePrompt();
   ['hud', 'goal', 'keyhint', 'hearts', 'focusTag', 'areaBanner'].forEach(id => $(id).hidden = true);
   ['map', 'recs', 'logov', 'menu', 'credits', 'quit', 'ending', 'recpop', 'imgpop', 'camps'].forEach(id => { $(id).hidden = true; });
   G.overlay = null; $('title').hidden = false;
-  const prog = loadProg(), lastC = prog.last && loadSave(prog.last) ? prog.last : null;
-  $('btnCont').disabled = !lastC;
-  $('contInfo').textContent = lastC ? `${CAMPS[lastC].tag} ${CAMPS[lastC].title}` : '저장된 기록 없음';
+  const prog = loadProg(), any = hasAnyData();
+  $('btnCont').disabled = !any;
+  $('contInfo').textContent = any ? '' : '저장된 기록 없음';
   $('titleRank').innerHTML = prog.final ? `천하상단 최종 랭크 ${rankSeal(prog.final.rank)}` : '';
   if (msg) toast(msg);
 }
@@ -1140,27 +1163,36 @@ function drawThumb(cvs) {
   } catch (e) { console.error(e); }
   ART.begin(ctx);
 }
+/* 챕터 선택 : 배경 그림 위에 챕터 카드 세 장. 앞 편을 클리어해야 다음 편이 열린다 */
+const campOpen = (c, prog = loadProg()) => { const i = CAMP_ORDER.indexOf(c); return i === 0 || !!(prog[CAMP_ORDER[i - 1]] && prog[CAMP_ORDER[i - 1]].done); };
 function openCamps() {
   const el = $('camps'), prog = loadProg(); G.overlay = 'modal';
-  el.innerHTML = `<div class="camps-panel"><header class="camps-head"><div><p class="eyebrow">챕터 선택</p><h2>어느 시대로 떠날까?</h2></div><button class="x" id="campsX">닫기</button></header>
-    <div class="camps-grid">${CAMP_ORDER.map(c => {
-      const camp = CAMPS[c], sv = loadSave(c), pr = prog[c];
-      return `<article class="camp-card c-${c}"><canvas class="camp-img" width="480" height="216" data-c="${c}" aria-label="${escH(camp.title)} 장면"></canvas><p class="camp-tag">${camp.tag}</p><h3>${escH(camp.title)}</h3><p class="camp-sub">${escH(camp.sub)}</p><p class="camp-blurb">${escH(camp.blurb)}</p>
-        <div class="camp-stat">${pr && pr.done ? `${rankSeal(pr.rank)}<span>최고 ${pr.score}점</span>` : `<span class="camp-none">${sv ? `진행 중 · 기록 ${sv.recs.length}/${camp.recs.length}` : '아직 시작하지 않음'}</span>`}</div>
-        <div class="camp-btns"><button class="btn gold" data-new="${c}">처음부터</button><button class="btn" data-cont="${c}" ${sv && !sv.done ? '' : 'disabled'}>이어하기</button></div></article>`;
-    }).join('')}</div>
-    <footer class="camps-foot">${prog.final ? `천하상단 최종 랭크 ${rankSeal(prog.final.rank)} <span>평균 ${prog.final.score}점</span>` : '제1부 · 제2부 · 제3부를 모두 마치면 <b>최종 랭크</b>가 기록됩니다. (권장 순서: 송 → 원 → 복습)'}</footer></div>`;
-  el.hidden = false; el.querySelectorAll('.camp-img').forEach(drawThumb);
-  $('campsX').onclick = () => { el.hidden = true; G.overlay = null; };
+  const card = (c, i) => {
+    const camp = CAMPS[c], sv = loadSave(c), pr = prog[c], open = campOpen(c, prog);
+    const best = pr && pr.done ? `${pr.score}점` : '—';
+    return `<article class="cc2 ${open ? '' : 'locked'}" style="--d:${i * 0.12}s">
+      <div class="cc2-frame"><canvas class="cc2-img" width="480" height="216" data-c="${c}"></canvas></div>
+      <p class="cc2-tag">${escH(camp.tag)}</p><h3>${escH(camp.title)}</h3><p class="cc2-sub">${escH(camp.sub)}</p>
+      <p class="cc2-blurb">${escH(camp.blurb)}</p>
+      <div class="cc2-row"><span class="lab">랭크</span><span class="val">${pr && pr.done ? rankSeal(pr.rank, false, true) : '—'}</span></div>
+      <div class="cc2-row"><span class="lab">최고 기록</span><span class="val">${best}</span></div>
+      <div class="cc2-btns"><button class="cbtn red" data-new="${c}" ${open ? '' : 'disabled'}>처음부터</button><button class="cbtn brown" data-cont="${c}" ${open && sv && !sv.done ? '' : 'disabled'}>이어하기</button></div>
+      ${open ? '' : `<div class="cc2-lock"><span>🔒</span>${escH(CAMPS[CAMP_ORDER[i - 1]].tag)}를 클리어하면 열려요</div>`}</article>`;
+  };
+  el.innerHTML = `<div class="cs-wrap"><header class="cs-head"><h2>챕터 선택</h2><button class="cs-x" id="campsX" aria-label="닫기">✕</button></header>
+    <div class="cs-grid">${CAMP_ORDER.map(card).join('')}</div>
+    <footer class="cs-foot">${prog.final ? `최종 랭크 ${rankSeal(prog.final.rank, false, true)}` : ''}</footer></div>`;
+  el.classList.add('cs'); el.hidden = false; el.querySelectorAll('.cc2-img').forEach(drawThumb);
+  const close = () => { el.hidden = true; G.overlay = null; };
+  $('campsX').onclick = close;
+  // 처음부터 : 그 편의 이야기만 처음부터 (돈 · 무기 · 스킬 · 다른 편 기록은 그대로)
   el.querySelectorAll('[data-new]').forEach(b => b.onclick = () => {
-    const c = b.dataset.new;
-    el.hidden = true; G.overlay = null;
-    askReset(() => startCamp(c, true));
+    const c = b.dataset.new, sv = loadSave(c), go = () => { close(); startCamp(c, true); };
+    if (sv && !sv.done) confirmBox('돈 · 무기 · 스킬은 그대로 남아요.', go, `${CAMPS[c].title}을 처음부터 할까요?`, '처음부터'); else go();
   });
-  el.querySelectorAll('[data-cont]').forEach(b => b.onclick = () => { el.hidden = true; G.overlay = null; startCamp(b.dataset.cont, false); });
-}
-function confirmBox(msg, yes) {
-  $('confMsg').textContent = msg; $('confirm').hidden = false;
+  el.querySelectorAll('[data-cont]').forEach(b => b.onclick = () => { close(); startCamp(b.dataset.cont, false); });
+}function confirmBox(msg, yes, title = '모든 데이터가 초기화됩니다', yesLabel = '초기화하고 시작') {
+  $('confTitle').textContent = title; $('confYes').textContent = yesLabel; $('confMsg').textContent = msg; $('confirm').hidden = false;
   $('confYes').onclick = () => { $('confirm').hidden = true; yes(); };
   $('confNo').onclick = () => { $('confirm').hidden = true; };
 }
@@ -1202,8 +1234,8 @@ function askReset(go) {
   if (!hasAnyData()) { wipeAll(); return go(); }
   confirmBox('저장된 데이터가 있다면 이어하기를 눌러 주세요.', () => { wipeAll(); toTitle(); go(); });
 }
-$('btnNew').onclick = () => { SND.unlock(); askReset(openCamps); };
-$('btnCont').onclick = () => { SND.unlock(); const p = loadProg(); if (p.last) startCamp(p.last, false); };
+$('btnNew').onclick = () => { SND.unlock(); askReset(() => startCamp('song', true)); };
+$('btnCont').onclick = () => { SND.unlock(); if (hasAnyData()) openCamps(); };
 $('btnCred').onclick = () => { $('about').hidden = false; G.overlay = 'modal'; };
 $('aboutX').onclick = () => { $('about').hidden = true; G.overlay = null; };
 $('btnQuit').onclick = () => showQuit();
@@ -1270,37 +1302,55 @@ function preload() {
 const AUTO_KEY = 'cheonha-auto-unlock';
 function autoUnlocked() { try { return localStorage.getItem(AUTO_KEY) === '1'; } catch (e) { return false; } }
 /* 코드로 열리는 두 버튼 : 자동 넘기기(1) · 매우 빠르게(2) */
+const AUTO_SHOW = 'cheonha-auto-show', CTRL_KEY = 'cheonha-ctrl';
+const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { } };
 function syncAutoBtn() {
-  const hide = !autoUnlocked() || G.mode === 'title' || G.mode === 'loading';
-  $('autoBox').hidden = hide;
+  const hide = !autoUnlocked() || lsGet(AUTO_SHOW, '1') !== '1' || G.mode === 'title' || G.mode === 'loading';
+  $('autoBox').hidden = hide; if (hide && G.auto) G.auto = 0;
   $('autoBtn').classList.toggle('on', G.auto === 1); $('fastBtn').classList.toggle('on', G.auto === 2);
-}
-const setAuto = m => { G.auto = G.auto === m ? 0 : m; syncAutoBtn(); if (G.auto && G.typing) { if (!G.typing.done && G.auto === 2) G.typing.end(); else if (G.typing.done) advance(); } };
+}const setAuto = m => { G.auto = G.auto === m ? 0 : m; syncAutoBtn(); if (G.auto && G.typing) { if (!G.typing.done && G.auto === 2) G.typing.end(); else if (G.typing.done) advance(); } };
 $('autoBtn').onclick = e => { e.stopPropagation(); setAuto(1); };
 $('fastBtn').onclick = e => { e.stopPropagation(); setAuto(2); };
 
 function openSettings() {
   const el = $('menu');
-  el.innerHTML = `<div class="menu-panel" role="dialog" aria-label="설정"><p class="eyebrow">설정</p><h2>게임 설정</h2>
-    <div class="menu-btns"><button class="btn" id="setSnd">소리: ${SND.on ? '켜짐' : '꺼짐'}</button><button class="btn" id="setHelp">조작 방법</button></div>
-    <label class="code-label" for="codeIn">코드 입력</label>
-    <div class="code-row"><input id="codeIn" autocomplete="off" spellcheck="false" placeholder="코드를 입력하세요"><button class="btn gold" id="codeGo">확인</button></div>
-    <p class="menu-note" id="codeMsg">${autoUnlocked() ? '자동 넘기기 · 매우 빠르게 버튼이 켜져 있습니다.' : '선생님께 받은 코드가 있다면 입력하세요.'}</p>
+  const fs = () => !!document.fullscreenElement;
+  const mode = () => lsGet(CTRL_KEY, 'auto');
+  const modeName = { auto: '자동', pc: 'PC', mobile: '모바일' };
+  el.innerHTML = `<div class="menu-panel set-panel" role="dialog" aria-label="설정"><h2>설정</h2>
+    <div class="set-list">
+      <div class="set-row"><span>소리</span><button class="btn sm" id="setSnd">${SND.on ? '켜짐' : '꺼짐'}</button></div>
+      <div class="set-row"><span>전체 화면</span><button class="btn sm" id="setFs">${fs() ? '켜짐' : '꺼짐'}</button></div>
+      <div class="set-row"><span>조작 모드</span><div class="seg" id="setMode">${['auto', 'pc', 'mobile'].map(m => `<button class="${mode() === m ? 'on' : ''}" data-m="${m}">${modeName[m]}</button>`).join('')}</div></div>
+      ${autoUnlocked() ? `<div class="set-row"><span>자동 넘기기 버튼</span><button class="btn sm" id="setAuto">${lsGet(AUTO_SHOW, '1') === '1' ? '켜짐' : '꺼짐'}</button></div>` : ''}
+      <div class="set-row"><span>조작 방법</span><button class="btn sm" id="setHelp">보기</button></div>
+    </div>
+    <div class="code-row"><input id="codeIn" autocomplete="off" spellcheck="false" placeholder="코드 입력"><button class="btn gold" id="codeGo">확인</button></div>
+    <p class="menu-note" id="codeMsg"></p>
     <div class="menu-btns row"><button class="btn gold" id="setX">닫기</button></div></div>`;
   el.hidden = false; G.overlay = 'menu'; hidePrompt();
-  $('setSnd').onclick = () => { SND.toggle(); $('setSnd').textContent = '소리: ' + (SND.on ? '켜짐' : '꺼짐'); };
+  $('setSnd').onclick = () => { SND.toggle(); $('setSnd').textContent = SND.on ? '켜짐' : '꺼짐'; };
+  $('setFs').onclick = async () => {
+    try { if (fs()) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch (e) { $('codeMsg').textContent = '이 브라우저에서는 전체 화면을 쓸 수 없어요.'; }
+    setTimeout(() => { if ($('setFs')) $('setFs').textContent = fs() ? '켜짐' : '꺼짐'; fit(); }, 200);
+  };
+  $('setMode').querySelectorAll('button').forEach(b => b.onclick = () => {
+    lsSet(CTRL_KEY, b.dataset.m); $('setMode').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (window.applyCtrlMode) window.applyCtrlMode();
+  });
+  if ($('setAuto')) $('setAuto').onclick = () => { lsSet(AUTO_SHOW, lsGet(AUTO_SHOW, '1') === '1' ? '0' : '1'); $('setAuto').textContent = lsGet(AUTO_SHOW, '1') === '1' ? '켜짐' : '꺼짐'; syncAutoBtn(); };
   $('setHelp').onclick = () => { closeOv(); showHelp(); };
   $('setX').onclick = closeOv;
   const go = () => {
     const v = ($('codeIn').value || '').trim().toLowerCase();
-    if (v === 'eastbusan') { try { localStorage.setItem(AUTO_KEY, '1'); } catch (e) { } $('codeMsg').textContent = '코드 확인! 게임 화면 오른쪽에 「자동 넘기기」 「매우 빠르게」 버튼이 생겼습니다.'; SND.play('win'); syncAutoBtn(); }
-    else { $('codeMsg').textContent = '알 수 없는 코드입니다.'; SND.play('bad'); }
+    if (v === 'eastbusan') { lsSet(AUTO_KEY, '1'); lsSet(AUTO_SHOW, '1'); SND.play('win'); syncAutoBtn(); openSettings(); $('codeMsg').textContent = '자동 넘기기 버튼이 생겼어요.'; }
+    else { $('codeMsg').textContent = '알 수 없는 코드예요.'; SND.play('bad'); }
   };
   $('codeGo').onclick = go;
   $('codeIn').addEventListener('keydown', e => { e.stopPropagation(); if (e.code === 'Enter' || e.code === 'NumpadEnter') go(); if (e.code === 'Escape') closeOv(); });
-  setTimeout(() => $('codeIn').focus(), 30);
 }
-$('hudSet').onclick = () => { if ((G.mode === 'play' || G.mode === 'script') && !G.overlay && !MG.active && !Quiz.active) openSettings(); };
+document.addEventListener('fullscreenchange', () => setTimeout(fit, 100));$('hudSet').onclick = () => { if ((G.mode === 'play' || G.mode === 'script') && !G.overlay && !MG.active && !Quiz.active) openSettings(); };
 
 /* ---------------- 감점 · 패배 ---------------- */
 function penalize(pts, hp) {
@@ -1390,6 +1440,9 @@ function showCompass(dir, spins, done) {
 }
 
 preload();
+UIART.load.then(() => { const p = loadProg(); if (p.final) $('titleRank').innerHTML = `천하상단 최종 랭크 ${rankSeal(p.final.rank)}`; });
 requestAnimationFrame(loop);
 window.__G = G;
 setInterval(syncAutoBtn, 500);
+$('dlgX').onclick = e => { e.stopPropagation(); endTalk(); };
+setInterval(() => { $('dlgX').hidden = !(G.npcTalk && G.mode === 'script' && !G.overlay && !Quiz.active && !MG.active); }, 150);
